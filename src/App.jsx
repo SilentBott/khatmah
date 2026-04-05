@@ -28,6 +28,18 @@ export default function App() {
   const [filter, setFilter] = useState("all");
   const [quickRegister, setQuickRegister] = useState(false);
   const pressTimer = useRef(null);
+
+  // حساب عدد الآيات الفريدة المقروءة لضمان عدم تكرار الآيات المتداخلة في الإحصائيات
+  const getUniqueVersesCount = (surahLogs, currentSurahAyat) => {
+    const coveredVerses = new Set();
+    surahLogs.forEach((log) => {
+      for (let i = log.verse_start; i <= log.verse_end; i++) {
+        coveredVerses.add(i);
+      }
+    });
+    return coveredVerses.size;
+  };
+
   // حفظ أي تغيير يحصل في حجم الخط
   useEffect(() => {
     localStorage.setItem("font-size", fontSize);
@@ -62,16 +74,10 @@ export default function App() {
 
   // handle user logout
   const handleLogout = async () => {
-    const { error } = await supabase.auth.signOut();
     localStorage.removeItem("إسم_الحساب");
-    if (error) {
-      console.error("Error:", error.message);
-    } else {
-      // جيت هاب أو الموقع هيحس بتغيير الـ Auth state ويرجعك للـ Login
-      // لو حابب تتأكد، ضيف السطر ده:
-      window.location.reload();
-    }
+    window.location.reload();
   };
+
   useEffect(() => {
     fetchData();
     const sub = supabase
@@ -97,18 +103,22 @@ export default function App() {
       });
     }, 4000);
   };
+
   // hangleClaim = تسجيل الآيات علي الموقع
   const handleClaim = async () => {
     setLoading(true);
     const active = vRanges.filter(
       (r) => r.isActive && !r.isSaved && r.start > 0 && r.end > 0,
     );
-    const total =
-      logs
-        .filter((l) => l.surah_id === selected.id)
-        .reduce((s, l) => s + (l.verse_end - l.verse_start + 1), 0) +
-      active.reduce((s, r) => s + (r.end - r.start + 1), 0);
-    const isFull = total >= selected.ayat;
+
+    const sLogs = logs.filter((l) => l.surah_id === selected.id);
+    // دمج السجلات القديمة مع الجديدة مؤقتاً لحساب التقدم الفعلي
+    const tempLogs = [
+      ...sLogs,
+      ...active.map((r) => ({ verse_start: r.start, verse_end: r.end })),
+    ];
+    const uniqueCount = getUniqueVersesCount(tempLogs, selected.ayat);
+    const isFull = uniqueCount >= selected.ayat;
 
     const inserts = active.map((r) => ({
       surah_id: selected.id,
@@ -137,6 +147,7 @@ export default function App() {
     setLoading(false);
     setSelected(null);
   };
+
   // عرض معلومات السوره وغيرها عند الضغط
   const openModal = (surah) => {
     setSelected(surah);
@@ -168,6 +179,7 @@ export default function App() {
       ]);
     }
   };
+
   //! choose name page
   if (!userName)
     return (
@@ -183,8 +195,11 @@ export default function App() {
         }}
       />
     );
+
   return (
-    <FontContext.Provider value={{ fontSize, setFontSize }}>
+    <FontContext.Provider
+      value={{ fontSize, setFontSize, getUniqueVersesCount }}
+    >
       {!currentGroup ? (
         //! Dashboard page
         <Dashboard
@@ -300,12 +315,11 @@ export default function App() {
           >
             {SURAHS.filter((s) => {
               const sLogs = logs.filter((l) => l.surah_id === s.id);
+              const uniqueCount = getUniqueVersesCount(sLogs, s.ayat);
               const done =
                 sLogs.some((l) => l.status === "completed") ||
-                sLogs.reduce(
-                  (sum, l) => sum + (l.verse_end - l.verse_start + 1),
-                  0,
-                ) >= s.ayat;
+                uniqueCount >= s.ayat;
+
               if (filter === "completed") return done;
               if (filter === "remaining") return !done;
               if (filter === "mine")

@@ -10,17 +10,16 @@ export default function SurahCard({
   onEndPress,
   onClick,
 }) {
-  const { fontSize } = useContext(FontContext);
+  const { fontSize, getUniqueVersesCount } = useContext(FontContext);
   const sLogs = logs.filter((l) => l.surah_id === s.id);
-  const totalClaimed = sLogs.reduce(
-    (sum, l) => sum + (l.verse_end - l.verse_start + 1),
-    0,
-  );
+
+  const uniqueClaimed = getUniqueVersesCount(sLogs, s.ayat);
   const isDone =
-    sLogs.some((l) => l.status === "completed") || totalClaimed >= s.ayat;
+    sLogs.some((l) => l.status === "completed") || uniqueClaimed >= s.ayat;
+
   const finishers = [...new Set(sLogs.map((l) => l.user_name))];
   const readers = sLogs.filter((l) => l.status === "reading");
-  const progress = Math.min((totalClaimed / s.ayat) * 100, 100);
+  const progress = Math.min((uniqueClaimed / s.ayat) * 100, 100);
 
   return (
     <button
@@ -33,23 +32,30 @@ export default function SurahCard({
     >
       <div
         style={{ fontSize: `${fontSize}px` }}
-        className="font-bold mb-1 font-serif"
+        className="font-bold mb-1 font-serif text-white"
       >
         {s.name_ar}
       </div>
-      <div className="text-[10px] text-emerald-600 mb-2 font-mono uppercase tracking-widest">
+      <div
+        style={{ fontSize: `${Math.max(8, fontSize - 8)}px` }}
+        className="text-emerald-600 mb-2 font-mono uppercase tracking-widest"
+      >
         آياتها: {s.ayat}
       </div>
       <div className="space-y-1">
         {isDone ? (
-          <div className="text-[9px] text-emerald-400 font-bold bg-emerald-500/10 py-1 rounded px-1 break-words">
+          <div
+            style={{ fontSize: `${Math.max(8, fontSize - 9)}px` }}
+            className="text-emerald-400 font-bold bg-emerald-500/10 py-1 rounded px-1 break-words"
+          >
             ختمها: {finishers.join("، ")}
           </div>
         ) : (
           readers.map((r, i) => (
             <div
               key={i}
-              className="text-[9px] text-amber-500 truncate bg-amber-500/5 rounded px-1.5 py-0.5 border border-amber-500/10 font-bold"
+              style={{ fontSize: `${Math.max(8, fontSize - 9)}px` }}
+              className="text-amber-500 truncate bg-amber-500/5 rounded px-1.5 py-0.5 border border-amber-500/10 font-bold"
             >
               {r.user_name} ({r.verse_start}-{r.verse_end})
             </div>

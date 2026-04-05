@@ -27,14 +27,16 @@ export default function KhatmahModal({
   getOccupiedVerses,
   openModal,
 }) {
-  const { fontSize } = useContext(FontContext);
+  const { fontSize, getUniqueVersesCount } = useContext(FontContext);
   if (!selected && !quickRegister) return null;
+
+  const sLogs = selected ? logs.filter((l) => l.surah_id === selected.id) : [];
+  const uniqueCount = selected ? getUniqueVersesCount(sLogs, selected.ayat) : 0;
   const isSuraDone =
     selected &&
-    logs
-      .filter((l) => l.surah_id === selected.id)
-      .reduce((sum, l) => sum + (l.verse_end - l.verse_start + 1), 0) >=
-      selected.ayat;
+    (sLogs.some((l) => l.status === "completed") ||
+      uniqueCount >= selected.ayat);
+
   return (
     <div
       className="fixed inset-0 z-50 bg-black/80 flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-sm"
@@ -102,13 +104,7 @@ export default function KhatmahModal({
                 </h3>
                 <p className="text-emerald-700 text-xs mb-4 text-center">
                   بواسطة:{" "}
-                  {[
-                    ...new Set(
-                      logs
-                        .filter((l) => l.surah_id === selected.id)
-                        .map((l) => l.user_name),
-                    ),
-                  ].join("، ")}
+                  {[...new Set(sLogs.map((l) => l.user_name))].join("، ")}
                 </p>
                 <button
                   onClick={onDeleteAll}
@@ -130,6 +126,9 @@ export default function KhatmahModal({
                         <div className="flex-1 relative group">
                           <select
                             value={range.start}
+                            style={{
+                              fontSize: `${Math.max(12, fontSize - 2)}px`,
+                            }}
                             onChange={(e) => {
                               const r = [...vRanges];
                               r[index].start = parseInt(e.target.value);
@@ -152,7 +151,7 @@ export default function KhatmahModal({
                               setVRanges(r);
                             }}
                             disabled={range.isSaved}
-                            className={`w-full bg-emerald-900/40 border border-emerald-800 rounded-xl py-2.5 px-2 text-center text-lg font-bold appearance-none outline-none ${range.isSaved ? "text-emerald-500" : "text-amber-200"}`}
+                            className={`w-full bg-emerald-900/40 border border-emerald-800 rounded-xl py-2.5 px-2 text-center font-bold appearance-none outline-none ${range.isSaved ? "text-emerald-500" : "text-amber-200"}`}
                           >
                             <option value="0" disabled>
                               من
@@ -167,18 +166,10 @@ export default function KhatmahModal({
                                 className="bg-emerald-950 text-white"
                                 disabled={occupied.has(num) && !range.isSaved}
                               >
-                                {num}{" "}
-                                {num === 1
-                                  ? "(أول السورة)"
-                                  : num === selected.ayat
-                                    ? "(آخر السورة)"
-                                    : ""}
+                                {num}
                               </option>
                             ))}
                           </select>
-                          {!range.isSaved && (
-                            <ChevronDown className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-emerald-700 pointer-events-none" />
-                          )}
                         </div>
                         <div className="text-emerald-800 font-black text-xs">
                           :
@@ -186,6 +177,9 @@ export default function KhatmahModal({
                         <div className="flex-1 relative group">
                           <select
                             value={range.end}
+                            style={{
+                              fontSize: `${Math.max(12, fontSize - 2)}px`,
+                            }}
                             onChange={(e) => {
                               const r = [...vRanges];
                               r[index].end = parseInt(e.target.value);
@@ -193,19 +187,11 @@ export default function KhatmahModal({
                               setVRanges(r);
                             }}
                             disabled={range.isSaved}
-                            className={`w-full bg-emerald-900/40 border border-emerald-800 rounded-xl py-2.5 px-2 text-center text-lg font-bold appearance-none outline-none ${range.isSaved ? "text-emerald-500" : "text-amber-200"}`}
+                            className={`w-full bg-emerald-900/40 border border-emerald-800 rounded-xl py-2.5 px-2 text-center font-bold appearance-none outline-none ${range.isSaved ? "text-emerald-500" : "text-amber-200"}`}
                           >
                             <option value="0" disabled>
                               إلى
                             </option>
-                            {!range.isSaved && (
-                              <option
-                                value={selected.ayat}
-                                className="bg-emerald-900 text-amber-400"
-                              >
-                                آخر السورة ({selected.ayat})
-                              </option>
-                            )}
                             {Array.from(
                               { length: selected.ayat - range.start + 1 },
                               (_, i) => i + range.start,
@@ -216,21 +202,19 @@ export default function KhatmahModal({
                                 className="bg-emerald-950 text-white"
                                 disabled={occupied.has(num) && !range.isSaved}
                               >
-                                {num}{" "}
-                                {num === selected.ayat ? "(آخر السورة)" : ""}
+                                {num}
                               </option>
                             ))}
                           </select>
-                          {!range.isSaved && (
-                            <ChevronDown className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-emerald-700 pointer-events-none" />
-                          )}
                         </div>
                         <div className="flex-none w-10 h-10 bg-emerald-900/60 border border-emerald-700 rounded-xl flex flex-col items-center justify-center">
-                          <span className="text-amber-400 text-[10px] font-bold">
+                          <span
+                            style={{
+                              fontSize: `${Math.max(10, fontSize - 8)}px`,
+                            }}
+                            className="text-amber-400 font-bold"
+                          >
                             {range.end ? range.end - range.start + 1 : 0}
-                          </span>
-                          <span className="text-[6px] text-emerald-600 uppercase">
-                            آية
                           </span>
                         </div>
                         <button
@@ -262,15 +246,6 @@ export default function KhatmahModal({
                       <BookOpen className="w-5 h-5" />
                     )}{" "}
                     حجز الآيات
-                  </button>
-                  <button
-                    onClick={() => {
-                      setSelected(null);
-                      setQuickRegister(false);
-                    }}
-                    className="w-14 bg-emerald-900/20 border border-emerald-800 rounded-2xl flex items-center justify-center text-emerald-500 hover:bg-emerald-900/40 transition-all"
-                  >
-                    <ArrowRightLeft className="w-5 h-5" />
                   </button>
                 </div>
               </>
