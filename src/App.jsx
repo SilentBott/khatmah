@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, createContext } from "react";
 import { supabase } from "./lib/supabase";
 import { SURAHS } from "./data/surahs";
 import Auth from "./components/Auth";
@@ -7,10 +7,15 @@ import SurahCard from "./components/SurahCard";
 import KhatmahModal from "./components/KhatmahModal";
 import { ArrowLeft, LogOut } from "lucide-react";
 
+export const FontContext = createContext();
+
 export default function App() {
   // get the user, define other important things
   const [userName, setUserName] = useState(
     () => localStorage.getItem("إسم_الحساب") || "",
+  );
+  const [fontSize, setFontSize] = useState(
+    () => Number(localStorage.getItem("font-size")) || 18,
   );
   const [currentGroup, setcurrentGroup] = useState(null);
   const [myKhatmats, setMyKhatmats] = useState([]);
@@ -23,6 +28,10 @@ export default function App() {
   const [filter, setFilter] = useState("all");
   const [quickRegister, setQuickRegister] = useState(false);
   const pressTimer = useRef(null);
+  // حفظ أي تغيير يحصل في حجم الخط
+  useEffect(() => {
+    localStorage.setItem("font-size", fontSize);
+  }, [fontSize]);
 
   // get/set user
   const fetchData = useCallback(async () => {
@@ -63,7 +72,6 @@ export default function App() {
       window.location.reload();
     }
   };
-
   useEffect(() => {
     fetchData();
     const sub = supabase
@@ -175,171 +183,173 @@ export default function App() {
         }}
       />
     );
-  //! Dashboard page
-  if (!currentGroup)
-    return (
-      <Dashboard
-        userName={userName}
-        myKhatmats={myKhatmats}
-        setcurrentGroup={setcurrentGroup}
-        newKhatmahName={newKhatmahName}
-        setNewKhatmahName={setNewKhatmahName}
-        onCreate={async () => {
-          const { data, error } = await supabase
-            .from("khatmats")
-            .insert({ name: newKhatmahName, creator_name: userName })
-            .select()
-            .single();
-          if (!error) {
-            await supabase
-              .from("khatmah_members")
-              .insert({ khatmah_id: data.id, user_name: userName });
-            setNewKhatmahName("");
-          } else alert("الاسم موجود");
-        }}
-        loginNameInput={loginNameInput}
-        setLoginNameInput={setLoginNameInput}
-        onJoin={async () => {
-          const { data } = await supabase
-            .from("khatmats")
-            .select("id")
-            .eq("name", loginNameInput)
-            .single();
-          if (data) {
-            await supabase
-              .from("khatmah_members")
-              .insert({ khatmah_id: data.id, user_name: userName });
-            setLoginNameInput("");
-          } else alert("لا توجد ختمة");
-        }}
-        onLogout={handleLogout}
-      />
-    );
-  //! group page
   return (
-    <div className="min-h-screen bg-emerald-950 text-white pb-10 text-right">
-      <header className="p-4 border-b border-emerald-800/50 flex flex-row-reverse justify-between items-center sticky top-0 bg-emerald-950/90 backdrop-blur-md z-10">
-        <div className="flex flex-row-reverse items-center gap-3">
-          <button
-            onClick={() => setcurrentGroup(null)}
-            className="p-2 bg-emerald-900/50 rounded-xl text-emerald-500"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </button>
-          <div>
-            <h1 className="text-lg font-bold text-amber-400 leading-none">
-              {currentGroup.name}
-            </h1>
-            <p className="text-[9px] text-emerald-600 mt-1 uppercase tracking-widest">
-              {userName}
-            </p>
-          </div>
-        </div>
-        <button
-          onClick={async () => {
-            const msg =
-              currentGroup.creator_name === userName
-                ? "حذف الختمة؟"
-                : "الخروج؟";
-            if (window.confirm(msg)) {
-              if (currentGroup.creator_name === userName)
-                await supabase
-                  .from("khatmats")
-                  .delete()
-                  .eq("id", currentGroup.id);
-              else
-                await supabase
-                  .from("khatmah_members")
-                  .delete()
-                  .match({ khatmah_id: currentGroup.id, user_name: userName });
-              setcurrentGroup(null);
-            }
+    <FontContext.Provider value={{ fontSize, setFontSize }}>
+      {!currentGroup ? (
+        //! Dashboard page
+        <Dashboard
+          userName={userName}
+          myKhatmats={myKhatmats}
+          setcurrentGroup={setcurrentGroup}
+          newKhatmahName={newKhatmahName}
+          setNewKhatmahName={setNewKhatmahName}
+          onCreate={async () => {
+            const { data, error } = await supabase
+              .from("khatmats")
+              .insert({ name: newKhatmahName, creator_name: userName })
+              .select()
+              .single();
+            if (!error) {
+              await supabase
+                .from("khatmah_members")
+                .insert({ khatmah_id: data.id, user_name: userName });
+              setNewKhatmahName("");
+            } else alert("الاسم موجود");
           }}
-          className="p-2 bg-red-950/20 border border-red-900/30 rounded-xl text-red-500 hover:bg-red-900/40 transition-all"
-        >
-          <LogOut className="w-4 h-4" />
-        </button>
-      </header>
-
-      <div className="flex flex-col items-center py-6 gap-4">
-        <button
-          onClick={() => setQuickRegister(true)}
-          className="text-white text-lg font-bold underline decoration-white underline-offset-8 hover:text-amber-400 hover:decoration-amber-400 transition-all"
-        >
-          تسجيل سريع
-        </button>
-        <div className="flex flex-wrap flex-row-reverse justify-center gap-2">
-          {[
-            { id: "all", label: "كلّ السور" },
-            { id: "completed", label: "التي تم إنجازها" },
-            { id: "remaining", label: "ما لم أنجزه" },
-            { id: "mine", label: "ما نحن فيه" },
-          ].map((t) => (
+          joinInput={loginNameInput}
+          setJoinInput={setLoginNameInput}
+          onJoin={async () => {
+            const { data } = await supabase
+              .from("khatmats")
+              .select("id")
+              .eq("name", loginNameInput)
+              .single();
+            if (data) {
+              await supabase
+                .from("khatmah_members")
+                .insert({ khatmah_id: data.id, user_name: userName });
+              setLoginNameInput("");
+            } else alert("لا توجد ختمة");
+          }}
+          onLogout={handleLogout}
+        />
+      ) : (
+        //! group page
+        <div className="min-h-screen bg-emerald-950 text-white pb-10 text-right">
+          <header className="p-4 border-b border-emerald-800/50 flex flex-row-reverse justify-between items-center sticky top-0 bg-emerald-950/90 backdrop-blur-md z-10">
+            <div className="flex flex-row-reverse items-center gap-3">
+              <button
+                onClick={() => setcurrentGroup(null)}
+                className="p-2 bg-emerald-900/50 rounded-xl text-emerald-500"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+              <div>
+                <h1 className="text-lg font-bold text-amber-400 leading-none">
+                  {currentGroup.name}
+                </h1>
+                <p className="text-[9px] text-emerald-600 mt-1 uppercase tracking-widest">
+                  {userName}
+                </p>
+              </div>
+            </div>
             <button
-              key={t.id}
-              onClick={() => setFilter(t.id)}
-              className={`px-4 py-1.5 rounded-full text-[10px] font-bold border transition-all ${filter === t.id ? "bg-amber-500 border-amber-500 text-emerald-950" : "bg-emerald-900/30 border-emerald-800 text-emerald-500"}`}
+              onClick={async () => {
+                const msg =
+                  currentGroup.creator_name === userName
+                    ? "حذف الختمة؟"
+                    : "الخروج؟";
+                if (window.confirm(msg)) {
+                  if (currentGroup.creator_name === userName)
+                    await supabase
+                      .from("khatmats")
+                      .delete()
+                      .eq("id", currentGroup.id);
+                  else
+                    await supabase.from("khatmah_members").delete().match({
+                      khatmah_id: currentGroup.id,
+                      user_name: userName,
+                    });
+                  setcurrentGroup(null);
+                }
+              }}
+              className="p-2 bg-red-950/20 border border-red-900/30 rounded-xl text-red-500 hover:bg-red-900/40 transition-all"
             >
-              {t.label}
+              <LogOut className="w-4 h-4" />
             </button>
-          ))}
-        </div>
-      </div>
+          </header>
 
-      <main
-        dir="rtl"
-        className="p-4 max-w-4xl mx-auto grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-4 text-center"
-      >
-        {SURAHS.filter((s) => {
-          const sLogs = logs.filter((l) => l.surah_id === s.id);
-          const done =
-            sLogs.some((l) => l.status === "completed") ||
-            sLogs.reduce(
-              (sum, l) => sum + (l.verse_end - l.verse_start + 1),
-              0,
-            ) >= s.ayat;
-          if (filter === "completed") return done;
-          if (filter === "remaining") return !done;
-          if (filter === "mine")
-            return sLogs.some((l) => l.status === "reading") && !done;
-          return true;
-        }).map((s) => (
-          <SurahCard
-            key={s.id}
-            s={s}
+          <div className="flex flex-col items-center py-6 gap-4">
+            <button
+              onClick={() => setQuickRegister(true)}
+              className="text-white text-lg font-bold underline decoration-white underline-offset-8 hover:text-amber-400 hover:decoration-amber-400 transition-all"
+            >
+              تسجيل سريع
+            </button>
+            <div className="flex flex-wrap flex-row-reverse justify-center gap-2">
+              {[
+                { id: "all", label: "كلّ السور" },
+                { id: "completed", label: "التي تم إنجازها" },
+                { id: "remaining", label: "ما لم أنجزه" },
+                { id: "mine", label: "ما نحن فيه" },
+              ].map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => setFilter(t.id)}
+                  className={`px-4 py-1.5 rounded-full text-[12px] font-bold border transition-all ${filter === t.id ? "bg-amber-500 border-amber-500 text-emerald-950" : "bg-emerald-900/30 border-emerald-800 text-emerald-500"}`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <main
+            dir="rtl"
+            className="p-4 max-w-4xl mx-auto grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-4 text-center"
+          >
+            {SURAHS.filter((s) => {
+              const sLogs = logs.filter((l) => l.surah_id === s.id);
+              const done =
+                sLogs.some((l) => l.status === "completed") ||
+                sLogs.reduce(
+                  (sum, l) => sum + (l.verse_end - l.verse_start + 1),
+                  0,
+                ) >= s.ayat;
+              if (filter === "completed") return done;
+              if (filter === "remaining") return !done;
+              if (filter === "mine")
+                return sLogs.some((l) => l.status === "reading") && !done;
+              return true;
+            }).map((s) => (
+              <SurahCard
+                key={s.id}
+                s={s}
+                logs={logs}
+                userName={userName}
+                onStartPress={handleLongPress}
+                onEndPress={() => clearTimeout(pressTimer.current)}
+                onClick={openModal}
+              />
+            ))}
+          </main>
+
+          <KhatmahModal
+            selected={selected}
+            setSelected={setSelected}
+            quickRegister={quickRegister}
+            setQuickRegister={setQuickRegister}
             logs={logs}
             userName={userName}
-            onStartPress={handleLongPress}
-            onEndPress={() => clearTimeout(pressTimer.current)}
-            onClick={openModal}
+            vRanges={vRanges}
+            setVRanges={setVRanges}
+            loading={loading}
+            onClaim={handleClaim}
+            onDeleteAll={deleteSurahLogs}
+            getOccupiedVerses={(surahId) => {
+              const occupied = new Set();
+              logs
+                .filter((l) => l.surah_id === surahId)
+                .forEach((log) => {
+                  for (let i = log.verse_start; i <= log.verse_end; i++)
+                    occupied.add(i);
+                });
+              return occupied;
+            }}
+            openModal={openModal}
           />
-        ))}
-      </main>
-
-      <KhatmahModal
-        selected={selected}
-        setSelected={setSelected}
-        quickRegister={quickRegister}
-        setQuickRegister={setQuickRegister}
-        logs={logs}
-        userName={userName}
-        vRanges={vRanges}
-        setVRanges={setVRanges}
-        loading={loading}
-        onClaim={handleClaim}
-        onDeleteAll={deleteSurahLogs}
-        getOccupiedVerses={(surahId) => {
-          const occupied = new Set();
-          logs
-            .filter((l) => l.surah_id === surahId)
-            .forEach((log) => {
-              for (let i = log.verse_start; i <= log.verse_end; i++)
-                occupied.add(i);
-            });
-          return occupied;
-        }}
-        openModal={openModal}
-      />
-    </div>
+        </div>
+      )}
+    </FontContext.Provider>
   );
 }

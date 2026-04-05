@@ -1,5 +1,6 @@
-import React from "react";
+import { useContext } from "react";
 import { CheckCircle2 } from "lucide-react";
+import { FontContext } from "../App";
 
 export default function SurahCard({
   s,
@@ -9,6 +10,7 @@ export default function SurahCard({
   onEndPress,
   onClick,
 }) {
+  const { fontSize } = useContext(FontContext);
   const sLogs = logs.filter((l) => l.surah_id === s.id);
   const totalClaimed = sLogs.reduce(
     (sum, l) => sum + (l.verse_end - l.verse_start + 1),
@@ -29,7 +31,12 @@ export default function SurahCard({
       onClick={() => onClick(s)}
       className={`p-4 pb-6 rounded-2xl border transition-all active:scale-95 relative overflow-hidden shadow-sm ${isDone ? "bg-emerald-800/40 border-emerald-500 shadow-emerald-900/40" : "bg-emerald-900/20 border-emerald-800 hover:border-emerald-700"}`}
     >
-      <div className="text-lg font-bold mb-1 font-serif">{s.name_ar}</div>
+      <div
+        style={{ fontSize: `${fontSize}px` }}
+        className="font-bold mb-1 font-serif"
+      >
+        {s.name_ar}
+      </div>
       <div className="text-[10px] text-emerald-600 mb-2 font-mono uppercase tracking-widest">
         آياتها: {s.ayat}
       </div>

@@ -1,6 +1,7 @@
 //! Dashboard page ()
-import { User, Users, ChevronDown, Plus, LogOut } from "lucide-react";
-import { supabase } from "../lib/supabase";
+import { useState, useContext } from "react";
+import { FontContext } from "../App";
+import { User, Users, ChevronDown, Plus, LogOut, X, Minus } from "lucide-react";
 
 export default function Dashboard({
   userName,
@@ -14,6 +15,9 @@ export default function Dashboard({
   onJoin,
   onLogout,
 }) {
+  const { fontSize, setFontSize } = useContext(FontContext);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-emerald-950 text-white p-6 text-right">
       <header className="max-w-2xl mx-auto flex flex-row-reverse justify-between items-center mb-12">
@@ -30,10 +34,13 @@ export default function Dashboard({
           </button>
 
           {/* برواز اسم المستخدم */}
-          <div className="bg-emerald-900 px-4 py-2 rounded-full text-xs border border-emerald-800 flex flex-row-reverse items-center gap-2">
+          <button
+            onClick={() => setIsSettingsOpen(true)}
+            className="bg-emerald-900 px-4 py-2 rounded-full text-xs border border-emerald-800 flex flex-row-reverse items-center gap-2 hover:border-amber-500/50 transition-all"
+          >
             <User className="w-3 h-3 text-amber-500" />
             <span className="font-medium text-emerald-500">{userName}</span>
-          </div>
+          </button>
         </div>
       </header>
       <div className="max-w-2xl mx-auto space-y-4">
@@ -110,6 +117,61 @@ export default function Dashboard({
           </div>
         </div>
       </div>
+
+      {isSettingsOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm"
+          onClick={(e) =>
+            e.target === e.currentTarget && setIsSettingsOpen(false)
+          }
+        >
+          <div className="bg-emerald-950 w-full max-w-[380px] rounded-[2rem] border border-emerald-800 p-6 shadow-2xl animate-in fade-in zoom-in duration-200">
+            <div className="flex justify-between items-center mb-6">
+              <button
+                onClick={() => setIsSettingsOpen(false)}
+                className="p-1.5 bg-emerald-900/50 rounded-full text-emerald-700 hover:text-red-400 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <h2 className="text-xl font-bold text-amber-400 font-serif">
+                إعدادات الحساب
+              </h2>
+            </div>
+
+            <div className="space-y-6">
+              <div className="bg-emerald-900/20 p-4 rounded-2xl border border-emerald-800">
+                <div className="text-[10px] text-emerald-700 font-bold uppercase mb-1 tracking-widest">
+                  الإسم
+                </div>
+                <div className="text-lg font-bold text-white">{userName}</div>
+              </div>
+
+              <div className="bg-emerald-900/20 p-4 rounded-2xl border border-emerald-800">
+                <div className="text-[10px] text-emerald-700 font-bold uppercase mb-3 tracking-widest text-center">
+                  حجم الخط
+                </div>
+                <div className="flex items-center justify-between">
+                  <button
+                    onClick={() => setFontSize((f) => Math.max(12, f - 2))}
+                    className="p-2 bg-emerald-800 rounded-xl text-white hover:bg-emerald-700 transition-colors"
+                  >
+                    <Minus className="w-5 h-5" />
+                  </button>
+                  <span className="text-2xl font-bold text-amber-400 font-mono">
+                    {fontSize}
+                  </span>
+                  <button
+                    onClick={() => setFontSize((f) => Math.min(32, f + 2))}
+                    className="p-2 bg-emerald-800 rounded-xl text-white hover:bg-emerald-700 transition-colors"
+                  >
+                    <Plus className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
