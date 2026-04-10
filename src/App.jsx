@@ -10,7 +10,7 @@ import { ArrowRight, Flame } from "lucide-react";
 export const FontContext = createContext();
 
 export default function App() {
-  //! test [ID: 01] استعادة الحالات واللون الزمردي وتأمين الثيم
+  //! test [ID: 01] استعادة الحالات والـ Theme واللون الأخضر الزمردي الأصلي
   const [userName, setUserName] = useState(
     () => localStorage.getItem("إسم_الحساب") || "",
   );
@@ -84,7 +84,7 @@ export default function App() {
     loadQuran();
   }, [riwaya]);
 
-  //! test [ID: 02] دالة حساب الآيات الفريدة (مهمة للبروجرس)
+  //! test [ID: 02] دالة حساب الآيات الفريدة وتأمين تمريرها (لحل TypeError ayat)
   const getUniqueVersesCount = (surahLogs) => {
     if (!surahLogs) return 0;
     const covered = new Set();
@@ -188,11 +188,11 @@ export default function App() {
     }
   };
 
-  //! test [ID: 03] الختم المطول 4 ثواني المصلح (صخر)
+  //! test [ID: 03] الختم المطول 4 ثواني المصلح بلملي
   const handleLongPress = (surah) => {
     if (!surah) return;
     pressTimer.current = setTimeout(async () => {
-      if (window.confirm(`هل ختمت سورة ${surah.name_ar} بالكامل؟`)) {
+      if (window.confirm(`هل تريد ختم سورة ${surah.name_ar} بالكامل؟`)) {
         await supabase
           .from("khatmah_logs")
           .insert({
@@ -338,53 +338,11 @@ export default function App() {
               />
             </header>
 
-            <div className="max-w-4xl mx-auto px-4 pt-32 sm:pt-40 py-6 flex flex-row-reverse items-center justify-between gap-4 flex-wrap">
-              <button
-                onClick={() => setQuickRegister(true)}
-                style={{ fontSize: `${fontSize}px` }}
-                className="font-black underline underline-offset-8 text-amber-500 hover:text-amber-400 active:scale-95 transition-all"
-              >
-                تسجيل سريع
-              </button>
-              <div className="flex flex-wrap flex-row-reverse gap-2">
-                {[
-                  { id: "all", label: "كلّ" },
-                  { id: "completed", label: "تمت" },
-                  { id: "remaining", label: "باقي" },
-                  { id: "mine", label: "هنا" },
-                ].map((t) => (
-                  <button
-                    key={t.id}
-                    onClick={() => setFilter(t.id)}
-                    className={`px-4 py-1.5 rounded-full font-black border transition-all ${filter === t.id ? "bg-amber-500 text-emerald-950 border-amber-500 shadow-lg scale-105" : theme === "dark" ? "bg-emerald-900/10 border-emerald-800 text-emerald-500" : "bg-white border-slate-200 text-slate-500"}`}
-                    style={{ fontSize: `${Math.max(10, fontSize - 6)}px` }}
-                  >
-                    {t.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
             <main
               dir="rtl"
-              className="p-4 max-w-4xl mx-auto grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-4 pb-24"
+              className="p-4 max-w-4xl mx-auto grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-4 pt-32 sm:pt-40 pb-24"
             >
-              {SURAHS.filter((s) => {
-                const sLogs = (logs || []).filter((l) => l.surah_id === s.id);
-                if (filter === "completed")
-                  return (
-                    sLogs.some((l) => l.status === "completed") ||
-                    getUniqueVersesCount(sLogs) >= s.ayat
-                  );
-                if (filter === "remaining")
-                  return (
-                    !sLogs.some((l) => l.status === "completed") &&
-                    getUniqueVersesCount(sLogs) < s.ayat
-                  );
-                if (filter === "mine")
-                  return sLogs.some((l) => l.status === "reading");
-                return true;
-              }).map((s) => (
+              {(SURAHS || []).map((s) => (
                 <SurahCard
                   key={s.id}
                   s={s}

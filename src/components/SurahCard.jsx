@@ -4,14 +4,14 @@ import { CheckCircle2 } from "lucide-react";
 
 export default function SurahCard({ s, logs, userName, onClick, ...props }) {
   const { theme, getUniqueVersesCount } = useContext(FontContext);
-  if (!s) return null; // //! test حماية صخرية
+  if (!s) return null;
 
   const sLogs = (logs || []).filter((l) => l.surah_id === s.id);
   const progress = getUniqueVersesCount(sLogs);
   const isCompleted =
     progress >= (s?.ayat || 0) || sLogs.some((l) => l.status === "completed");
 
-  //! test [ID: 04] ترتيب المخلصين حسب عدد الآيات المنجزة فعلياً
+  //! test [ID: 04] ترتيب المخلصين حسب عدد الآيات المنجزة
   const finishers = useMemo(() => {
     if (!isCompleted) return null;
     const userStats = {};
@@ -28,7 +28,7 @@ export default function SurahCard({ s, logs, userName, onClick, ...props }) {
     <button
       onClick={() => onClick(s)}
       {...props}
-      className={`relative p-6 pb-8 rounded-[2.5rem] border-2 transition-all active:scale-95 group overflow-hidden ${isCompleted ? "border-emerald-500 bg-emerald-500/10" : theme === "dark" ? "bg-emerald-900/10 border-emerald-800/30" : "bg-white border-slate-200 shadow-sm"}`}
+      className={`relative p-6 pb-10 rounded-[2.5rem] border-2 transition-all active:scale-95 group overflow-hidden ${isCompleted ? "border-emerald-500 bg-emerald-500/10" : theme === "dark" ? "bg-emerald-900/10 border-emerald-800/30" : "bg-white border-slate-200 shadow-sm"}`}
     >
       <div className="flex flex-col items-center gap-3">
         <span className="text-[10px] font-black opacity-30 uppercase tracking-widest">

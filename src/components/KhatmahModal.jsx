@@ -353,7 +353,7 @@ export default function KhatmahModal({
                   >
                     <div
                       style={{
-                        fontSize: `${isMobile ? (fontSize / 2 + 6) * 1.5 : (fontSize + 4) * 1.5}px`,
+                        fontSize: `${isMobile ? fontSize / 2 + 10 : fontSize * 1.5 + 4}px`,
                         fontWeight: "900",
                       }}
                       className={`text-justify font-serif leading-[2.8] px-1 sm:px-10 ${theme === "dark" ? "text-white" : "text-slate-800"}`}
@@ -399,31 +399,6 @@ export default function KhatmahModal({
                         })}
                     </div>
                   </div>
-                  {verseMenu && (
-                    <div
-                      className="fixed z-[1200] bg-white dark:bg-[#064e3b] shadow-[0_30px_60px_rgba(0,0,0,0.8)] rounded-3xl border-2 border-amber-500 flex p-2 animate-in zoom-in"
-                      style={{
-                        left: verseMenu.x,
-                        top: verseMenu.y,
-                        transform: "translate(-50%, -130%)",
-                      }}
-                    >
-                      <button
-                        onClick={() =>
-                          setVerseRangeTouch("from", verseMenu.aya)
-                        }
-                        className={`px-10 py-4 text-base font-black ${theme === "dark" ? "text-amber-400 border-emerald-700" : "text-emerald-700 border-slate-200"} border-l-2 hover:bg-emerald-500/10 transition-colors`}
-                      >
-                        مِن
-                      </button>
-                      <button
-                        onClick={() => setVerseRangeTouch("to", verseMenu.aya)}
-                        className={`px-10 py-4 text-base font-black ${theme === "dark" ? "text-amber-400" : "text-emerald-700"} hover:bg-emerald-500/10 transition-colors`}
-                      >
-                        إلَى
-                      </button>
-                    </div>
-                  )}
                 </div>
               )}
               {/* //! test [ID: 06] المحاذاة المصلحة (Same Level): استخدام absolute لزر "آخر السورة" */}
@@ -539,3 +514,4 @@ export default function KhatmahModal({
     </>
   );
 }
+  
