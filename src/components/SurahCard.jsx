@@ -1,5 +1,5 @@
 import { useContext, useMemo } from "react";
-import { FontContext } from "../App";
+import { FontContext } from "../FontContext";
 import { CheckCircle2 } from "lucide-react";
 
 export default function SurahCard({ s, logs, userName, onClick, ...props }) {
@@ -33,7 +33,7 @@ export default function SurahCard({ s, logs, userName, onClick, ...props }) {
         <span className="text-[10px] font-black opacity-30 uppercase tracking-widest">
           {s.id}
         </span>
-        {/* //! test اسم السورة أسود في النهار وذهبي في الليل */}
+        {/* //! test اسم السورة أسود صريح في الثيم الفاتح */}
         <h3
           className={`font-black font-serif text-xl group-hover:scale-110 transition-transform ${theme === "dark" ? "text-amber-500" : "text-black"}`}
         >

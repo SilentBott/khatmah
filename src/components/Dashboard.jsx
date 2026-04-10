@@ -1,5 +1,6 @@
 import { useState, useContext } from "react";
-import { FontContext } from "../App";
+// هنا غيرت المسار لـ FontContext عشان الـ Warning يروح، لو لسه جوه App.jsx رجعه تاني
+import { FontContext } from "../FontContext";
 import {
   User,
   Users,
@@ -9,7 +10,6 @@ import {
   Minus,
   Plus,
   Moon,
-  Sun,
   Settings,
   Flame,
   RefreshCw,
@@ -55,10 +55,13 @@ export default function Dashboard({
   const hModesAr = { text: "سطر", row: "كل" };
   const vModes = ["num", "text", "both"];
   const vModesAr = { num: "رقم", text: "نص", both: "الـ2" };
-
+  const handleLogout = () => {
+    localStorage.removeItem("إسم_الحساب");
+    window.location.reload();
+  };
   return (
     <div className="p-6 text-right max-w-2xl mx-auto">
-      <header className="flex flex-row-reverse justify-between items-center mb-12">
+      <header className="flex flex-row justify-between items-center mb-12">
         <h1 className="text-4xl font-black text-amber-500 font-serif tracking-tighter">
           نَسَق
         </h1>
@@ -70,17 +73,17 @@ export default function Dashboard({
             </div>
           )}
           <button
-            onClick={onLogout}
-            className={`p-3 rounded-full border dark:bg-red-500/10 dark:text-red-500 dark:border-red-500/20 bg-white text-slate-400`}
-          >
-            <LogOut size={20} />
-          </button>
-          <button
             onClick={() => setIsSettingsOpen(true)}
             className="dark:bg-emerald-900/20 bg-white shadow-sm px-5 py-3 rounded-full border flex flex-row-reverse items-center gap-2 hover:scale-105 transition-all"
           >
             <Settings size={18} className="text-amber-500" />
             <span className="font-black opacity-60 text-xs">الإعدادات</span>
+          </button>
+          <button
+            onClick={handleLogout}
+            className={`p-3 rounded-full border dark:bg-red-500/10 dark:text-red-500 dark:border-red-500/20 bg-white text-slate-400`}
+          >
+            <LogOut size={20} />
           </button>
         </div>
       </header>
@@ -97,7 +100,7 @@ export default function Dashboard({
             <div>
               <h3 className="font-black font-serif text-lg">ختمتي الشخصية</h3>
               <p className="text-emerald-600 text-xs font-bold uppercase font-mono">
-                riwaya: {riwayaAr[riwaya]}
+                رواية: {riwayaAr[riwaya]}
               </p>
             </div>
           </div>
@@ -116,7 +119,7 @@ export default function Dashboard({
               <div>
                 <h3 className="font-black font-serif text-lg">{k.name}</h3>
                 <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">
-                  by: {k.creator_name}
+                  أنشأها: {k.creator_name}
                 </p>
               </div>
             </div>
@@ -159,111 +162,221 @@ export default function Dashboard({
       </div>
 
       {isSettingsOpen && (
-        <div
-          className="fixed inset-0 z-[200] bg-black/70 backdrop-blur-md flex items-center justify-center p-4"
-          onClick={() => setIsSettingsOpen(false)}
-        >
+        <>
+          <style>{`
+            .quran-scroll::-webkit-scrollbar { width: 4px; } 
+            .quran-scroll::-webkit-scrollbar-track { background: transparent; margin: 48px 0; }
+            .quran-scroll::-webkit-scrollbar-thumb { background: #ffb900; border-radius: 10px; } 
+          `}</style>
+
           <div
-            className={`${theme === "dark" ? "bg-[#04120a] border-emerald-900" : "bg-white border-slate-200"} border-2 p-10 rounded-[3.5rem] w-full max-w-md shadow-2xl animate-in zoom-in`}
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 z-[200] bg-black/20 backdrop-blur-sm flex items-start justify-center overflow-y-auto px-4 py-12 sm:py-20"
+            onClick={() => setIsSettingsOpen(false)}
           >
-            <div className="flex justify-between items-center mb-10 px-2">
-              <button
-                onClick={() => setIsSettingsOpen(false)}
-                className={`p-3 rounded-full transition-all ${theme === "dark" ? "bg-emerald-900/40 text-emerald-400" : "bg-slate-100 text-slate-400"}`}
-              >
-                <X size={24} />
-              </button>
-              <h2 className="text-2xl font-black text-amber-500 font-serif">
-                الإعدادات
-              </h2>
-            </div>
-            <div className="space-y-6">
-              <div className="p-5 dark:bg-emerald-900/40 bg-slate-50 rounded-3xl border border-inherit text-center">
-                <span className="text-[9px] font-black opacity-40 uppercase block mb-3 tracking-widest">
-                  الرواية الحالية
-                </span>
+            {/* تطبيق الستايل الجديد (Gradient + Glassmorphism) على نافذة الإعدادات بلملي */}
+            <div
+              className={`w-full max-w-md my-auto h-fit max-h-[85vh] overflow-y-auto quran-scroll 
+                ${theme === "dark" ? "bg-gradient-to-b from-[#064e3b] to-[#022a1d] border-emerald-700/40 text-emerald-50" : "bg-gradient-to-b from-white to-slate-50 border-slate-200 text-slate-800"} 
+                border p-8 ps-10 sm:p-10 sm:ps-12 rounded-[3.5rem] shadow-2xl relative z-10`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* تأثير التوهج في الخلفية (بيظهر في الدارك مود بس عشان يبقى شيك) */}
+              {theme === "dark" && (
+                <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/5 rounded-full blur-3xl pointer-events-none -z-10"></div>
+              )}
+
+              <div className="flex justify-between items-center mb-10 px-2 relative z-10">
+                <h2 className="text-3xl font-black text-amber-500 font-serif">
+                  الإعدادات
+                </h2>
                 <button
-                  onClick={() =>
-                    setRiwaya(
-                      riwayas[(riwayas.indexOf(riwaya) + 1) % riwayas.length],
-                    )
-                  }
-                  className="w-full bg-amber-500 text-emerald-950 py-3 rounded-2xl font-black text-[11px] shadow-md transition-all active:scale-95"
+                  onClick={() => setIsSettingsOpen(false)}
+                  className={`p-3 rounded-full transition-all active:scale-90 ${theme === "dark" ? "bg-emerald-900/40 text-emerald-400 hover:bg-emerald-900/60" : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}
                 >
-                  <RefreshCw size={14} className="inline ml-1" />{" "}
-                  {riwayaAr[riwaya]}
+                  <X size={24} />
                 </button>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="p-4 dark:bg-emerald-900/20 bg-slate-50 rounded-2xl border border-inherit text-center flex flex-col gap-3">
-                  <span className="text-[9px] font-black opacity-40 uppercase">
-                    تظليل
+
+              <div className="space-y-6 relative z-10">
+                {/* كارت الرواية الحالية */}
+                <div
+                  className={`p-6 rounded-3xl border transition-colors ${theme === "dark" ? "bg-emerald-900/30 border-emerald-500/10 hover:bg-emerald-900/40" : "bg-slate-50/80 border-slate-200 hover:bg-slate-100"} text-center shadow-sm`}
+                >
+                  <span
+                    className={`text-[10px] font-black uppercase tracking-widest block mb-4 ${theme === "dark" ? "text-emerald-200 opacity-60" : "text-slate-400"}`}
+                  >
+                    الرواية الحالية
                   </span>
                   <button
                     onClick={() =>
-                      setHighlightMode(
-                        hModes[
-                          (hModes.indexOf(highlightMode) + 1) % hModes.length
-                        ],
+                      setRiwaya(
+                        riwayas[(riwayas.indexOf(riwaya) + 1) % riwayas.length],
                       )
                     }
-                    className="w-full bg-emerald-600 text-white py-2.5 rounded-xl font-black text-[10px] shadow-md transition-all active:scale-95"
+                    className="w-full bg-amber-500 text-emerald-950 py-3.5 rounded-2xl font-black text-[12px] shadow-md hover:bg-amber-400 transition-all active:scale-95"
                   >
-                    <Highlighter size={12} className="inline ml-1" />{" "}
-                    {hModesAr[highlightMode]}
+                    <RefreshCw size={14} className="inline ml-1.5" />
+                    {riwayaAr[riwaya]}
                   </button>
                 </div>
-                <div className="p-4 dark:bg-emerald-900/20 bg-slate-50 rounded-2xl border border-inherit text-center flex flex-col gap-3">
-                  <span className="text-[9px] font-black opacity-40 uppercase">
-                    عرض الآيات
-                  </span>
+
+                {/* كروت التظليل وعرض الآيات */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div
+                    className={`p-5 rounded-[2rem] border text-center flex flex-col justify-between gap-4 transition-colors ${theme === "dark" ? "bg-emerald-900/30 border-emerald-500/10 hover:bg-emerald-900/40" : "bg-slate-50/80 border-slate-200 hover:bg-slate-100"} shadow-sm`}
+                  >
+                    <span
+                      className={`text-[10px] font-black uppercase tracking-widest ${theme === "dark" ? "text-emerald-200 opacity-60" : "text-slate-400"}`}
+                    >
+                      تظليل
+                    </span>
+                    <button
+                      onClick={() =>
+                        setHighlightMode(
+                          hModes[
+                            (hModes.indexOf(highlightMode) + 1) % hModes.length
+                          ],
+                        )
+                      }
+                      className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-[1.2rem] font-black text-[11px] shadow-md transition-all active:scale-95"
+                    >
+                      <Highlighter size={14} className="inline ml-1" />
+                      {hModesAr[highlightMode]}
+                    </button>
+                  </div>
+
+                  <div
+                    className={`p-5 rounded-[2rem] border text-center flex flex-col justify-between gap-4 transition-colors ${theme === "dark" ? "bg-emerald-900/30 border-emerald-500/10 hover:bg-emerald-900/40" : "bg-slate-50/80 border-slate-200 hover:bg-slate-100"} shadow-sm`}
+                  >
+                    <span
+                      className={`text-[10px] font-black uppercase tracking-widest ${theme === "dark" ? "text-emerald-200 opacity-60" : "text-slate-400"}`}
+                    >
+                      عرض الآيات
+                    </span>
+                    <button
+                      onClick={() =>
+                        setVerseViewMode(
+                          vModes[
+                            (vModes.indexOf(verseViewMode) + 1) % vModes.length
+                          ],
+                        )
+                      }
+                      className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-[1.2rem] font-black text-[11px] shadow-md transition-all active:scale-95"
+                    >
+                      <Layers size={14} className="inline ml-1" />
+                      {vModesAr[verseViewMode]}
+                    </button>
+                  </div>
+                </div>
+
+                {/* كارت حجم الخط */}
+                <div
+                  className={`p-6 rounded-[2.5rem] border flex items-center justify-between transition-colors ${theme === "dark" ? "bg-emerald-900/30 border-emerald-500/10 hover:bg-emerald-900/40" : "bg-slate-50/80 border-slate-200 hover:bg-slate-100"} shadow-sm`}
+                >
                   <button
-                    onClick={() =>
-                      setVerseViewMode(
-                        vModes[
-                          (vModes.indexOf(verseViewMode) + 1) % vModes.length
-                        ],
-                      )
-                    }
-                    className="w-full bg-emerald-600 text-white py-2.5 rounded-xl font-black text-[10px] shadow-md transition-all active:scale-95"
+                    onClick={() => setFontSize((f) => Math.max(12, f - 2))}
+                    className="p-4 bg-emerald-600 hover:bg-emerald-500 rounded-[1.3rem] text-white transition-all active:scale-90 shadow-md"
                   >
-                    <Layers size={12} className="inline ml-1" />{" "}
-                    {vModesAr[verseViewMode]}
+                    <Minus size={22} />
+                  </button>
+                  <div className="flex flex-col items-center">
+                    <span
+                      className={`text-[9px] font-black uppercase tracking-widest mb-1 ${theme === "dark" ? "text-emerald-200 opacity-60" : "text-slate-400"}`}
+                    >
+                      حجم الخط
+                    </span>
+                    <span className="text-4xl font-black text-amber-500 font-mono">
+                      {fontSize}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => setFontSize((f) => Math.min(36, f + 2))}
+                    className="p-4 bg-emerald-600 hover:bg-emerald-500 rounded-[1.3rem] text-white transition-all active:scale-90 shadow-md"
+                  >
+                    <Plus size={22} />
                   </button>
                 </div>
-              </div>
-              <div className="p-6 dark:bg-emerald-900/20 bg-slate-50 rounded-[2.5rem] border border-inherit flex items-center justify-between shadow-inner">
+
+                {/* //! test [ID: 02] قسم معاينة الخط لحظياً - Preview Section */}
+                <div
+                  className={`mt-8 p-6 rounded-[2.5rem] border border-dashed transition-colors ${theme === "dark" ? "border-emerald-600/30 bg-emerald-900/20" : "border-slate-300 bg-slate-50/50"} shadow-inner`}
+                >
+                  <p
+                    className={`text-[10px] font-black mb-6 text-center uppercase tracking-widest ${theme === "dark" ? "text-emerald-200 opacity-40" : "text-slate-400"}`}
+                  >
+                    معاينة التغييرات
+                  </p>
+
+                  <div className="space-y-6 text-center">
+                    {/* 1. اسم السورة */}
+                    <div className="flex flex-col gap-1.5">
+                      <span
+                        className={`text-[9px] font-black uppercase ${theme === "dark" ? "text-emerald-200 opacity-30" : "text-slate-400 opacity-70"}`}
+                      >
+                        اسم السورة
+                      </span>
+                      <h3
+                        className="font-black font-serif text-[#ffb900] transition-all"
+                        style={{ fontSize: `${fontSize + 6}px` }}
+                      >
+                        سُورَةُ الفَاتِحَةِ
+                      </h3>
+                    </div>
+
+                    {/* 2. نص القرآن (نفس المصحف) */}
+                    <div className="flex flex-col gap-1.5">
+                      <span
+                        className={`text-[9px] font-black uppercase ${theme === "dark" ? "text-emerald-200 opacity-30" : "text-slate-400 opacity-70"}`}
+                      >
+                        نص المصحف
+                      </span>
+                      <p
+                        className={`font-serif leading-[2.8] transition-all ${theme === "dark" ? "text-emerald-50" : "text-slate-800"}`}
+                        style={{ fontSize: `${fontSize * 1.5}px` }}
+                      >
+                        بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ
+                      </p>
+                    </div>
+
+                    {/* 3. الخط الثانوي (labels/logs) */}
+                    <div
+                      className={`flex flex-col gap-1.5 border-t pt-5 ${theme === "dark" ? "border-emerald-500/10" : "border-slate-200"}`}
+                    >
+                      <span
+                        className={`text-[9px] font-black uppercase ${theme === "dark" ? "text-emerald-200 opacity-30" : "text-slate-400 opacity-70"}`}
+                      >
+                        الخط الثانوي
+                      </span>
+                      <p
+                        className={`font-black transition-all ${theme === "dark" ? "text-emerald-100 opacity-60" : "text-slate-500"}`}
+                        style={{ fontSize: `${fontSize * 0.7}px` }}
+                      >
+                        تمت قراءة 15 آية بواسطة يوسف
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* زرار الوضع الليلي */}
                 <button
-                  onClick={() => setFontSize((f) => Math.max(12, f - 2))}
-                  className="p-4 bg-emerald-600 rounded-2xl text-white active:scale-90 shadow-lg"
+                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                  className={`w-full mt-6 p-6 rounded-[2.5rem] flex justify-between items-center border font-black transition-all shadow-sm active:scale-95 
+                    ${theme === "dark" ? "bg-emerald-900/30 border-emerald-500/20 text-emerald-100 hover:bg-amber-500/10 hover:border-amber-500/30 hover:text-amber-400" : "bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200"}`}
                 >
-                  <Minus size={22} />
-                </button>
-                <span
-                  className={`text-4xl font-black ${theme === "dark" ? "text-amber-500" : "text-emerald-700"} font-mono`}
-                >
-                  {fontSize}
-                </span>
-                <button
-                  onClick={() => setFontSize((f) => Math.min(36, f + 2))}
-                  className="p-4 bg-emerald-600 rounded-2xl text-white active:scale-90 shadow-lg"
-                >
-                  <Plus size={22} />
+                  <span className="tracking-wide">
+                    {theme === "dark" ? "الوضع الليلي 🌙" : "الوضع النهاري ☀️"}
+                  </span>
+                  <Moon
+                    size={20}
+                    className={
+                      theme === "dark" ? "text-emerald-300" : "text-slate-500"
+                    }
+                  />
                 </button>
               </div>
-              <button
-                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                className="w-full bg-emerald-900/10 p-6 rounded-[2.5rem] flex justify-between items-center border border-emerald-800/30 font-black transition-all hover:bg-amber-500/10 shadow-sm"
-              >
-                <span>
-                  {theme === "dark" ? "الوضع الليلي 🌙" : "الوضع النهاري ☀️"}
-                </span>
-                <Moon size={20} />
-              </button>
             </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );

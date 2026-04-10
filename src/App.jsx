@@ -5,15 +5,25 @@ import Auth from "./components/Auth";
 import Dashboard from "./components/Dashboard";
 import SurahCard from "./components/SurahCard";
 import KhatmahModal from "./components/KhatmahModal";
-import { ArrowRight, Flame } from "lucide-react";
-
-export const FontContext = createContext();
+import { ArrowRight, Info, Home, BookText } from "lucide-react";
+import { FontContext } from "./FontContext";
 
 export default function App() {
-  //! test [ID: 01] استعادة الحالات والـ Theme واللون الأخضر الزمردي الأصلي
+  //! test [ID: 01] تعريف الدالة المسببة للخطأ وتأمينها بلملي
+  const getUniqueVersesCount = (surahLogs) => {
+    if (!surahLogs || !Array.isArray(surahLogs)) return 0;
+    const covered = new Set();
+    surahLogs.forEach((l) => {
+      if (l.verse_start && l.verse_end)
+        for (let i = l.verse_start; i <= l.verse_end; i++) covered.add(i);
+    });
+    return covered.size;
+  };
+
   const [userName, setUserName] = useState(
     () => localStorage.getItem("إسم_الحساب") || "",
   );
+  const [view, setView] = useState("main");
   const [loginNameInput, setLoginNameInput] = useState("");
   const [fontSize, setFontSize] = useState(
     () => Number(localStorage.getItem("font-size")) || 18,
@@ -24,14 +34,14 @@ export default function App() {
   const [streak, setStreak] = useState(
     () => Number(localStorage.getItem("nasaq-streak")) || 0,
   );
-  const [verseViewMode, setVerseViewMode] = useState(
-    () => localStorage.getItem("nasaq-verse-mode") || "both",
-  );
   const [riwaya, setRiwaya] = useState(
     () => localStorage.getItem("nasaq-riwaya") || "Hafs",
   );
   const [highlightMode, setHighlightMode] = useState(
     () => localStorage.getItem("nasaq-h-mode") || "row",
+  );
+  const [verseViewMode, setVerseViewMode] = useState(
+    () => localStorage.getItem("nasaq-verse-mode") || "both",
   );
 
   const [quranData, setQuranData] = useState([]);
@@ -44,10 +54,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState("all");
   const [quickRegister, setQuickRegister] = useState(false);
-
   const [showHeader, setShowHeader] = useState(true);
-  const lastScrollY = useRef(0);
-  const pressTimer = useRef(null);
 
   const riwayaAr = {
     Hafs: "حفص عن عاصم",
@@ -57,17 +64,6 @@ export default function App() {
     Sousi: "السوسي عن أبي عمرو",
     Shuba: "شعبة عن عاصم",
   };
-
-  useEffect(() => {
-    const handleScroll = () => {
-      if (window.scrollY > lastScrollY.current && window.scrollY > 60)
-        setShowHeader(false);
-      else setShowHeader(true);
-      lastScrollY.current = window.scrollY;
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
 
   useEffect(() => {
     async function loadQuran() {
@@ -84,35 +80,29 @@ export default function App() {
     loadQuran();
   }, [riwaya]);
 
-  const getUniqueVersesCount = (surahLogs) => {
-    if (!surahLogs) return 0;
-    const covered = new Set();
-    surahLogs.forEach((l) => {
-      if (l.verse_start && l.verse_end)
-        for (let i = l.verse_start; i <= l.verse_end; i++) covered.add(i);
-    });
-    return covered.size;
-  };
+  //! test [ID: 02] الخروج بـ Esc بلملي
+  useEffect(() => {
+    const handleEsc = (e) => {
+      if (e.key === "Escape") {
+        setSelected(null);
+        setQuickRegister(false);
+        if (view === "about") setView("main");
+      }
+    };
+    window.addEventListener("keydown", handleEsc);
+    return () => window.removeEventListener("keydown", handleEsc);
+  }, [view]);
 
   const calculateGlobalProgress = () => {
     const total = 6236;
-    let read = 0;
-    SURAHS.forEach((s) => {
-      read += getUniqueVersesCount(
-        (logs || []).filter((l) => l.surah_id === s.id),
-      );
+    const covered = new Set();
+    (logs || []).forEach((l) => {
+      if (l.verse_start && l.verse_end)
+        for (let i = l.verse_start; i <= l.verse_end; i++)
+          covered.add(`${l.surah_id}-${i}`);
     });
-    return ((read / total) * 100).toFixed(1);
+    return ((covered.size / total) * 100).toFixed(1);
   };
-
-  useEffect(() => {
-    localStorage.setItem("font-size", fontSize);
-    localStorage.setItem("nasaq-theme", theme);
-    localStorage.setItem("nasaq-verse-mode", verseViewMode);
-    localStorage.setItem("nasaq-riwaya", riwaya);
-    localStorage.setItem("nasaq-h-mode", highlightMode);
-    document.body.className = theme;
-  }, [fontSize, theme, verseViewMode, riwaya, highlightMode]);
 
   const fetchData = useCallback(async () => {
     if (!userName) return;
@@ -129,11 +119,11 @@ export default function App() {
       );
     setMyKhatmats(khatmats || []);
     if (currentGroup) {
-      const q = supabase.from("khatmah_logs").select("*");
-      currentGroup.id === null
-        ? q.is("khatmah_id", null).eq("user_name", userName)
-        : q.eq("khatmah_id", currentGroup.id);
-      const { data } = await q.order("created_at", { ascending: true });
+      const { data } = await supabase
+        .from("khatmah_logs")
+        .select("*")
+        .eq("khatmah_id", currentGroup.id)
+        .order("created_at", { ascending: true });
       setLogs(data || []);
     }
   }, [userName, currentGroup]);
@@ -187,27 +177,6 @@ export default function App() {
     }
   };
 
-  //! test [ID: 02] الختم المطول 4 ثواني المصلح بلملي
-  const handleLongPress = (surah) => {
-    if (!surah) return;
-    pressTimer.current = setTimeout(async () => {
-      if (window.confirm(`هل ختمت سورة ${surah.name_ar} بالكامل؟`)) {
-        await supabase
-          .from("khatmah_logs")
-          .insert({
-            surah_id: surah.id,
-            user_name: userName,
-            status: "completed",
-            verse_start: 1,
-            verse_end: surah?.ayat || 1,
-            khatmah_id: currentGroup.id,
-          });
-        if (streak === 0) setStreak(1);
-        fetchData();
-      }
-    }, 4000);
-  };
-
   return (
     <FontContext.Provider
       value={{
@@ -229,180 +198,163 @@ export default function App() {
       }}
     >
       <div
-        className={`min-h-screen transition-all ${theme === "dark" ? "bg-emerald-950 text-white" : "bg-emerald-50 text-slate-900"}`}
+        dir="rtl"
+        className={`min-h-screen transition-all ${theme === "dark" ? "bg-[#042f24] text-white" : "bg-emerald-50 text-slate-900"}`}
       >
         {!userName ? (
-          <Auth
-            loginNameInput={loginNameInput}
-            setLoginNameInput={setLoginNameInput}
-            onLogin={() => {
-              if (loginNameInput) {
-                localStorage.setItem("إسم_الحساب", loginNameInput);
-                setUserName(loginNameInput);
-                fetchData();
-              }
-            }}
-          />
+          <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center relative pb-24">
+            <Auth
+              loginNameInput={loginNameInput}
+              setLoginNameInput={setLoginNameInput}
+              onLogin={() => {
+                if (loginNameInput) {
+                  localStorage.setItem("إسم_الحساب", loginNameInput);
+                  setUserName(loginNameInput);
+                  fetchData();
+                }
+              }}
+            />
+
+            <footer className="absolute bottom-8 w-full text-center left-0 right-0">
+              <button
+                onClick={() => setView("about")}
+                className="opacity-40 hover:opacity-100 font-black text-xs flex items-center gap-2 mx-auto"
+              >
+                <Info size={14} /> عن نَسَق
+              </button>
+            </footer>
+            {/* //! test [ID: 05] إصلاح مودال (عن نسق) - تحسين الـ Blur والخلفية بلملي */}
+            {view === "about" && (
+              <div
+                className="fixed inset-0 z-[300] bg-black/20 backdrop-blur-sm flex items-start justify-center overflow-y-auto px-4 py-12 sm:py-20"
+                onClick={() => setView("main")}
+              >
+                <div className="w-full max-w-2xl my-auto">
+                  <AboutView theme={theme} onClose={() => setView("main")} />
+                </div>
+              </div>
+            )}
+          </div>
         ) : !currentGroup ? (
-          <Dashboard
-            userName={userName}
-            myKhatmats={myKhatmats}
-            setcurrentGroup={setcurrentGroup}
-            onLogout={() => {
-              localStorage.removeItem("إسم_الحساب");
-              window.location.reload();
-            }}
-            onCreate={async (n) => {
-              const { data } = await supabase
-                .from("khatmats")
-                .insert({ name: n, creator_name: userName })
-                .select()
-                .single();
-              if (data) {
-                await supabase
-                  .from("khatmah_members")
-                  .insert({ khatmah_id: data.id, user_name: userName });
-                fetchData();
-                setcurrentGroup(data);
-              }
-            }}
-            onJoin={async (n) => {
-              const { data } = await supabase
-                .from("khatmats")
-                .select("*")
-                .eq("name", n)
-                .maybeSingle();
-              if (data) {
-                await supabase
-                  .from("khatmah_members")
-                  .insert({ khatmah_id: data.id, user_name: userName });
-                fetchData();
-                setcurrentGroup(data);
-              }
-            }}
-          />
+          <div className="relative min-h-screen max-w-3xl mx-auto flex flex-col p-4 sm:p-8">
+            <Dashboard
+              userName={userName}
+              myKhatmats={myKhatmats}
+              setcurrentGroup={setcurrentGroup}
+              onLogout={() => {}}
+            />
+            <footer className="text-center mt-auto">
+              <button
+                onClick={() => setView("about")}
+                className="opacity-40 hover:opacity-100 font-black text-xs flex items-center gap-2 mx-auto"
+              >
+                <Info size={14} /> عن نَسَق
+              </button>
+            </footer>
+            {/* //! test [ID: 06] إصلاح مودال (عن نسق) - تحسين الـ Blur والخلفية بلملي */}
+            {view === "about" && (
+              <div
+                className="fixed inset-0 z-[300] bg-black/20 backdrop-blur-sm flex items-start justify-center overflow-y-auto px-4 py-12 sm:py-20"
+                onClick={() => setView("main")}
+              >
+                <div className="w-full max-w-2xl my-auto">
+                  <AboutView theme={theme} onClose={() => setView("main")} />
+                </div>
+              </div>
+            )}
+          </div>
         ) : (
-          <div className="text-right">
+          <div className="max-w-3xl mx-auto flex flex-col min-h-screen p-4 sm:p-8">
+            {/* //! test [ID: 04] هيدر المجموعة RTL: الاسم يمين والتقدم شمال بلملي صخر صخر */}
             <header
-              className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-500 ${showHeader ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0"} ${theme === "dark" ? "bg-emerald-950/95 border-emerald-800/20" : "bg-white/95 border-slate-200 shadow-xl"}`}
-              style={{ paddingBlock: `${Math.max(12, fontSize / 1.2)}px` }}
+              className={`fixed top-0 left-0 right-0 z-[100] bg-[#042f24]/95 border-b border-emerald-800/20 py-4`}
             >
-              <div className="max-w-4xl mx-auto flex flex-row-reverse justify-between items-center px-4 relative">
-                <div className="flex flex-row-reverse items-center gap-3">
+              <div className="max-w-3xl mx-auto flex flex-row items-center justify-between px-4">
+                <div className="flex flex-row items-center gap-3">
                   <button
                     onClick={() => setcurrentGroup(null)}
-                    className="p-2 rounded-xl bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 transition-colors"
+                    className="p-2 rounded-xl bg-emerald-500/10 text-emerald-500"
                   >
-                    <ArrowRight size={Math.max(22, fontSize)} />
+                    <ArrowRight size={22} />
                   </button>
                   <div className="flex flex-col text-right">
-                    <h1
-                      className={`font-black font-serif leading-tight tracking-tighter ${theme === "dark" ? "text-amber-500" : "text-slate-900"}`}
-                      style={{ fontSize: `${fontSize + 4}px` }}
-                    >
+                    <h1 className="font-black text-[#ffb900] text-xl font-serif tracking-tight">
                       {currentGroup.name}
                     </h1>
-                    {/* //! test تعريب كلمة رواية بالعربي بلملي */}
-                    <span
-                      className="opacity-60 font-bold"
-                      style={{ fontSize: `${fontSize * 0.65}px` }}
-                    >
-                      {userName} • رواية: {riwayaAr[riwaya]}
+                    <span className="opacity-60 font-bold text-[10px]">
+                      رواية: {riwayaAr[riwaya]} • {userName}
                     </span>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  {streak > 0 && (
-                    <div
-                      className="flex items-center gap-1 text-orange-500 font-black px-2.5 py-1.5 bg-orange-500/10 rounded-full border border-orange-500/20"
-                      style={{ fontSize: `${fontSize * 0.75}px` }}
-                    >
-                      <Flame size={fontSize * 0.8} fill="currentColor" />{" "}
-                      {streak}
-                    </div>
-                  )}
-                  <div
-                    className="font-black text-emerald-500"
-                    style={{ fontSize: `${fontSize * 0.75}px` }}
-                  >
+                <div className="flex items-center gap-4">
+                  <div className="font-black text-emerald-500 text-sm">
                     {calculateGlobalProgress()}%
                   </div>
                 </div>
               </div>
-              <div
-                className="absolute bottom-0 left-0 h-1.5 bg-emerald-500 transition-all duration-1000 shadow-[0_0_15px_rgba(16,185,129,0.8)]"
-                style={{ width: `${calculateGlobalProgress()}%` }}
-              />
             </header>
 
-            {/* //! test [ID: 03] الترتيب الجديد للتاجات: كل ← لم ننهها ← باقي ← تمت */}
-            <div className="max-w-4xl mx-auto px-4 pt-32 sm:pt-40 py-6 flex flex-row-reverse items-center justify-between gap-4 flex-wrap">
-              <button
-                onClick={() => setQuickRegister(true)}
-                style={{ fontSize: `${fontSize}px` }}
-                className="font-black underline underline-offset-8 text-amber-500 hover:text-amber-400 active:scale-95 transition-all"
-              >
-                تسجيل سريع
-              </button>
-              <div className="flex flex-wrap flex-row-reverse gap-2">
-                {[
-                  { id: "all", label: "كلّ" },
-                  { id: "mine", label: "لم ننهها" },
-                  { id: "remaining", label: "باقي" },
-                  { id: "completed", label: "تمّت" },
-                ].map((t) => (
-                  <button
-                    key={t.id}
-                    onClick={() => setFilter(t.id)}
-                    className={`px-4 py-1.5 rounded-full font-black border transition-all ${filter === t.id ? "bg-amber-500 text-emerald-950 border-amber-500 shadow-lg scale-105" : theme === "dark" ? "bg-emerald-900/10 border-emerald-800 text-emerald-500" : "bg-white border-slate-200 text-slate-500"}`}
-                    style={{ fontSize: `${Math.max(10, fontSize - 6)}px` }}
-                  >
-                    {t.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <main
-              dir="rtl"
-              className="p-4 max-w-4xl mx-auto grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-4 pb-24"
-            >
-              {SURAHS.filter((s) => {
-                const sLogs = (logs || []).filter((l) => l.surah_id === s.id);
-                const isSuraCompleted =
-                  getUniqueVersesCount(sLogs) >= s.ayat ||
-                  sLogs.some((l) => l.status === "completed");
-                if (filter === "completed") return isSuraCompleted;
-                if (filter === "remaining") return !isSuraCompleted;
-                if (filter === "mine")
-                  return (
-                    sLogs.some((l) => l.user_name === userName) &&
-                    !isSuraCompleted
-                  );
-                return true;
-              }).map((s) => (
-                <SurahCard
-                  key={s.id}
-                  s={s}
-                  logs={logs || []}
-                  userName={userName}
-                  onClick={openModal}
-                  onMouseDown={() => handleLongPress(s)}
-                  onMouseUp={() => clearTimeout(pressTimer.current)}
-                  onMouseLeave={() => clearTimeout(pressTimer.current)}
-                  onTouchStart={() => handleLongPress(s)}
-                  onTouchEnd={() => clearTimeout(pressTimer.current)}
-                  onContextMenu={(e) => e.preventDefault()}
-                />
-              ))}
+            <main className="pt-20 pb-12 flex-grow">
+              {view === "about" ? (
+                <AboutView theme={theme} onClose={() => setView("main")} />
+              ) : (
+                <>
+                  <div className="flex flex-col gap-6 mb-10">
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { id: "all", label: "كلّ" },
+                        { id: "mine", label: "لم ننهها" },
+                        { id: "remaining", label: "باقي" },
+                        { id: "completed", label: "تمّت" },
+                      ].map((t) => (
+                        <button
+                          key={t.id}
+                          onClick={() => setFilter(t.id)}
+                          className={`px-4 py-1.5 rounded-full font-black border transition-all ${filter === t.id ? "bg-[#ffb900] text-emerald-950 border-[#ffb900] shadow-lg scale-105" : "bg-emerald-900/10 border-emerald-800 text-emerald-500"}`}
+                          style={{
+                            fontSize: `${Math.max(10, fontSize - 6)}px`,
+                          }}
+                        >
+                          {t.label}
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      onClick={() => setQuickRegister(true)}
+                      className="font-black underline underline-offset-8 text-[#ffb900] active:scale-95 transition-all text-right"
+                      style={{ fontSize: `${fontSize}px` }}
+                    >
+                      تسجيل سريع
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    {SURAHS.map((s) => (
+                      <SurahCard
+                        key={s.id}
+                        s={s}
+                        logs={logs}
+                        userName={userName}
+                        onClick={openModal}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
             </main>
-
+            <footer className="py-4 text-center border-t border-emerald-500/5">
+              <button
+                onClick={() => setView("about")}
+                className="opacity-40 hover:opacity-100 font-black text-xs flex items-center gap-2 mx-auto"
+              >
+                <Info size={14} /> عن نَسَق
+              </button>
+            </footer>
             <KhatmahModal
               selected={selected}
               setSelected={setSelected}
               quickRegister={quickRegister}
               setQuickRegister={setQuickRegister}
-              logs={logs || []}
+              logs={logs}
               userName={userName}
               vRanges={vRanges}
               setVRanges={setVRanges}
@@ -420,11 +372,9 @@ export default function App() {
                   verse_end: r.end,
                   khatmah_id: currentGroup.id,
                 }));
-                if (inserts.length > 0) {
+                if (inserts.length > 0)
                   await supabase.from("khatmah_logs").insert(inserts);
-                  if (streak === 0) setStreak(1);
-                  fetchData();
-                }
+                fetchData();
                 setLoading(false);
                 setSelected(null);
                 setQuickRegister(false);
@@ -434,26 +384,15 @@ export default function App() {
                 fetchData();
               }}
               onDeleteAll={async () => {
-                if (window.confirm("حذف كل قراءاتك؟")) {
+                if (window.confirm("حذف كل قراءاتك؟"))
                   await supabase
                     .from("khatmah_logs")
                     .delete()
                     .match({ surah_id: selected.id, user_name: userName });
-                  fetchData();
-                  setSelected(null);
-                }
-              }}
-              onFullReset={async () => {
-                await supabase
-                  .from("khatmah_logs")
-                  .delete()
-                  .eq("khatmah_id", currentGroup.id);
                 fetchData();
+                setSelected(null);
               }}
-              isCreator={
-                currentGroup.creator_name === userName ||
-                currentGroup.id === null
-              }
+              isCreator={currentGroup.creator_name === userName}
               getOccupiedVerses={(id) => {
                 const occ = new Set();
                 (logs || [])
@@ -470,5 +409,86 @@ export default function App() {
         )}
       </div>
     </FontContext.Provider>
+  );
+}
+function AboutView({ theme, onClose }) {
+  return (
+    <>
+      <style>{`
+        .quran-scroll::-webkit-scrollbar { width: 4px; } 
+        .quran-scroll::-webkit-scrollbar-track { background: transparent; margin: 48px 0; }
+        .quran-scroll::-webkit-scrollbar-thumb { background: #ffb900; border-radius: 10px; } 
+      `}</style>
+      <div
+        dir="rtl"
+        onClick={(e) => e.stopPropagation()}
+        className="w-full h-fit max-h-[85vh] overflow-y-auto quran-scroll bg-gradient-to-b from-[#064e3b] to-[#022a1d] p-8 ps-10 sm:p-12 sm:ps-14 rounded-[3rem] border border-emerald-700/40 text-right shadow-2xl relative z-10"
+      >
+        <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/5 rounded-full blur-3xl pointer-events-none -z-10"></div>
+
+        <button
+          onClick={onClose}
+          className="absolute top-6 left-6 p-3 rounded-full bg-red-500/10 text-red-400 hover:bg-red-500/20 active:scale-95 transition-all z-20"
+        >
+          <Home size={22} />
+        </button>
+
+        <div className="flex flex-col items-center gap-4 mb-10 text-center relative z-10">
+          <div className="p-5 bg-[#ffb900]/10 rounded-full border border-[#ffb900]/20 shadow-inner">
+            <BookText size={48} className="text-[#ffb900]" />
+          </div>
+          <h2 className="text-4xl font-black font-serif text-[#ffb900] tracking-tighter">
+            نَسَق
+          </h2>
+          <span className="text-emerald-400 font-mono text-xs tracking-widest uppercase font-bold bg-emerald-900/40 px-4 py-1.5 rounded-full border border-emerald-800/50">
+            Nasaq Platform
+          </span>
+        </div>
+
+        <div className="space-y-4 text-[16px] font-bold leading-[2.2] text-emerald-50 relative z-10">
+          <div className="p-6 rounded-3xl bg-emerald-900/30 border border-emerald-500/10 shadow-sm hover:bg-emerald-900/40 transition-colors">
+            <p>
+              <span className="text-[#ffb900] text-lg font-black">«نَسَق»</span>{" "}
+              هي منصة ذكية صُممت لتنظيم خِتمتك القرآنية، ومتابعة وردك اليومي
+              بيسر وسهولة، سواء كنت تقرأ بمفردك أو ضمن مجموعة.
+            </p>
+          </div>
+
+          <div className="p-6 rounded-3xl bg-emerald-900/30 border border-emerald-500/10 shadow-sm hover:bg-emerald-900/40 transition-colors">
+            <p>
+              يتيح لك النظام إنشاء مجموعات قراءة ومزامنة الإنجاز مع أصحابك{" "}
+              <span className="text-amber-400 border-b border-dashed border-amber-400/50 pb-1">
+                لحظياً
+              </span>
+              ، مما يعين على التنافس المحمود والالتزام المستمر.
+            </p>
+          </div>
+
+          <div className="p-6 rounded-3xl bg-emerald-900/30 border border-emerald-500/10 shadow-sm hover:bg-emerald-900/40 transition-colors">
+            <p>
+              تتميز المنصة بواجهة خالية من المشتتات، مع دعم كامل لعدة روايات،
+              وتوثيق دقيق للآيات المقروءة لضمان حفظ تقدمك وحمايته من الضياع.
+            </p>
+          </div>
+        </div>
+
+        <footer className="mt-12 pt-8 border-t border-emerald-700/30 text-center space-y-3 relative z-10">
+          <p className="text-xs opacity-60 text-emerald-100 font-black">
+            تم البحث عن الآيات بمساعدة ملفات
+          </p>
+          <a
+            href="http://tanzil.net/"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-block text-[11px] text-[#ffb900] opacity-70 hover:opacity-100 transition-all font-black uppercase tracking-wider"
+          >
+            Tanzil - Quran Navigator
+          </a>
+          <p className="text-[9px] opacity-30 mt-6 font-black uppercase tracking-widest text-emerald-100">
+            نَسَق - لخدمة كتاب الله © 2026
+          </p>
+        </footer>
+      </div>
+    </>
   );
 }
