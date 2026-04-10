@@ -4,14 +4,14 @@ import { CheckCircle2 } from "lucide-react";
 
 export default function SurahCard({ s, logs, userName, onClick, ...props }) {
   const { theme, getUniqueVersesCount } = useContext(FontContext);
-  if (!s) return null;
+  if (!s) return null; // //! test حماية صخرية
 
   const sLogs = (logs || []).filter((l) => l.surah_id === s.id);
   const progress = getUniqueVersesCount(sLogs);
   const isCompleted =
     progress >= (s?.ayat || 0) || sLogs.some((l) => l.status === "completed");
 
-  //! test [ID: 04] ترتيب المخلصين حسب عدد الآيات المنجزة
+  //! test [ID: 04] ترتيب المخلصين حسب عدد الآيات المنجزة فعلياً
   const finishers = useMemo(() => {
     if (!isCompleted) return null;
     const userStats = {};

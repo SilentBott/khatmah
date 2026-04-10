@@ -84,7 +84,7 @@ export default function App() {
     loadQuran();
   }, [riwaya]);
 
-  //! test [ID: 02] دالة حساب الآيات الفريدة وتأمين تمريرها (لحل TypeError ayat)
+  //! test [ID: 02] دالة حساب التقدم وتأمين تمريرها للـ Provider (لحل TypeError ayat)
   const getUniqueVersesCount = (surahLogs) => {
     if (!surahLogs) return 0;
     const covered = new Set();
@@ -188,7 +188,7 @@ export default function App() {
     }
   };
 
-  //! test [ID: 03] الختم المطول 4 ثواني المصلح بلملي
+  //! test [ID: 03] الختم المطول 4 ثواني المصلح بلملي لمنع قائمة المتصفح
   const handleLongPress = (surah) => {
     if (!surah) return;
     pressTimer.current = setTimeout(async () => {
@@ -342,7 +342,22 @@ export default function App() {
               dir="rtl"
               className="p-4 max-w-4xl mx-auto grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-4 pt-32 sm:pt-40 pb-24"
             >
-              {(SURAHS || []).map((s) => (
+              {SURAHS.filter((s) => {
+                const sLogs = (logs || []).filter((l) => l.surah_id === s.id);
+                if (filter === "completed")
+                  return (
+                    sLogs.some((l) => l.status === "completed") ||
+                    getUniqueVersesCount(sLogs) >= s.ayat
+                  );
+                if (filter === "remaining")
+                  return (
+                    !sLogs.some((l) => l.status === "completed") &&
+                    getUniqueVersesCount(sLogs) < s.ayat
+                  );
+                if (filter === "mine")
+                  return sLogs.some((l) => l.status === "reading");
+                return true;
+              }).map((s) => (
                 <SurahCard
                   key={s.id}
                   s={s}

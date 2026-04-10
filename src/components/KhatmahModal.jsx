@@ -351,9 +351,10 @@ export default function KhatmahModal({
                   <div
                     className={`w-full ${isMobile ? "w-full px-0" : ""} p-8 sm:p-14 ${theme === "dark" ? "bg-[#004030] border-emerald-900 shadow-inner" : "bg-[#fffdf5] border-amber-100 shadow-sm"} border-y-4 rounded-3xl overflow-hidden`}
                   >
+                    {/* //! test [ID: 06] معادلة حجم الخط الذكية x1.5 المصلحة بلملي (Zero Margins موبايل) */}
                     <div
                       style={{
-                        fontSize: `${isMobile ? fontSize / 2 + 10 : fontSize * 1.5 + 4}px`,
+                        fontSize: `${isMobile ? (fontSize / 2 + 6) * 1.5 : fontSize * 1.5 + 4}px`,
                         fontWeight: "900",
                       }}
                       className={`text-justify font-serif leading-[2.8] px-1 sm:px-10 ${theme === "dark" ? "text-white" : "text-slate-800"}`}
@@ -376,21 +377,22 @@ export default function KhatmahModal({
                           );
                           const isOcc = occupied.has(v.aya);
                           return (
+                            /* //! test [ID: 07] التظليل الصلب المعتم بلملي (Solid Block Fill) للوضوح القوي */
                             <span
                               key={i}
                               onClick={(e) => toggleVerseMenu(v.aya, e)}
-                              className={`inline transition-all duration-200 cursor-pointer ${isOcc ? "opacity-30 grayscale pointer-events-none" : ""} ${isSel ? (highlightMode === "text" ? "bg-amber-400/20 text-white shadow-[0_0_20px_rgba(251,191,36,0.6)] font-black px-0.5" : "bg-amber-400/40 text-white shadow-sm border-y-2 border-amber-400/30 block w-full text-center py-1") : ""}`}
+                              className={`inline transition-all duration-200 cursor-pointer ${isOcc ? "opacity-30 grayscale pointer-events-none" : ""} ${isSel ? "bg-emerald-800 text-white shadow-sm font-black block w-full text-center py-1" : ""}`}
                               style={
                                 isSel
                                   ? {
-                                      textShadow: "1px 1px 2px rgba(0,0,0,0.5)",
+                                      textShadow: "1px 1px 2px rgba(0,0,0,0.8)",
                                     }
                                   : {}
                               }
                             >
                               {v.text}{" "}
                               <span
-                                className={`text-amber-400 opacity-100 text-2xl font-sans inline-block px-1`}
+                                className={`text-amber-400 opacity-100 text-3xl font-sans inline-block px-1`}
                               >
                                 ({v.aya})
                               </span>
@@ -399,9 +401,34 @@ export default function KhatmahModal({
                         })}
                     </div>
                   </div>
+                  {verseMenu && (
+                    <div
+                      className="fixed z-[1200] bg-white dark:bg-[#064e3b] shadow-[0_30px_60px_rgba(0,0,0,0.8)] rounded-3xl border-2 border-amber-500 flex p-2 animate-in zoom-in"
+                      style={{
+                        left: verseMenu.x,
+                        top: verseMenu.y,
+                        transform: "translate(-50%, -130%)",
+                      }}
+                    >
+                      <button
+                        onClick={() =>
+                          setVerseRangeTouch("from", verseMenu.aya)
+                        }
+                        className={`px-10 py-4 text-base font-black ${theme === "dark" ? "text-amber-400 border-emerald-700" : "text-emerald-700 border-slate-200"} border-l-2 hover:bg-emerald-500/10 transition-colors`}
+                      >
+                        مِن
+                      </button>
+                      <button
+                        onClick={() => setVerseRangeTouch("to", verseMenu.aya)}
+                        className={`px-10 py-4 text-base font-black ${theme === "dark" ? "text-amber-400" : "text-emerald-700"} hover:bg-emerald-500/10 transition-colors`}
+                      >
+                        إلَى
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
-              {/* //! test [ID: 06] المحاذاة المصلحة (Same Level): استخدام absolute لزر "آخر السورة" */}
+              {/* //! test [ID: 08] المحاذاة المصلحة (Same Level): استخدام absolute لزر "آخر السورة" */}
               <div className="space-y-4 mb-10 px-2 mt-10">
                 {(vRanges || []).map((range, index) => (
                   <div
@@ -458,7 +485,7 @@ export default function KhatmahModal({
                         fontSize={fontSize}
                         startLimit={range.start}
                       />
-                      {/* //! test [ID: 07] زر "إلى آخر السورة" باللون الأبيض في آخر سطر فقط */}
+                      {/* //! test [ID: 09] زر "إلى آخر السورة" باللون الأبيض في آخر سطر فقط بلملي */}
                       {index === vRanges.length - 1 && (
                         <button
                           onClick={() => {
@@ -514,4 +541,3 @@ export default function KhatmahModal({
     </>
   );
 }
-  
