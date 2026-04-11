@@ -89,7 +89,7 @@ export default function App() {
     return saved >= 3 && saved <= 10 ? saved : 5;
   });
   const [theme, setTheme] = useState(
-    () => localStorage.getItem("nasaq-theme") || "dark",
+    () => localStorage.getItem("nasaq-theme") || "light",
   );
   const [streak, setStreak] = useState(
     () => Number(localStorage.getItem("nasaq-streak")) || 0,
@@ -98,7 +98,7 @@ export default function App() {
     () => localStorage.getItem("nasaq-riwaya") || "Hafs",
   );
   const [highlightMode, setHighlightMode] = useState(
-    () => localStorage.getItem("nasaq-h-mode") || "row",
+    () => localStorage.getItem("nasaq-h-mode") || "full",
   );
   const [verseViewMode, setVerseViewMode] = useState(
     () => localStorage.getItem("nasaq-verse-mode") || "both",
@@ -258,23 +258,38 @@ export default function App() {
     }
   };
 
-  const handleLongPress = async (surah) => {
+  const handleLongPress = async (surah, action) => {
     if (navigator.vibrate) navigator.vibrate(50);
-    const sLogs = (logs || []).filter((l) => l.surah_id === surah.id);
-    if (getUniqueVersesCount(sLogs) >= surah.ayat) return;
-    if (!window.confirm(`هل أنت متأكد من ختم سورة ${surah.name_ar} بالكامل؟`))
-      return;
     setLoading(true);
-    await supabase.from("khatmah_logs").insert([
-      {
-        surah_id: surah.id,
-        user_name: userName,
-        status: "completed",
-        verse_start: 1,
-        verse_end: surah.ayat,
-        khatmah_id: currentGroup.id,
-      },
-    ]);
+
+    if (action === "undo") {
+      // لو الأكشن إلغاء، هنمسح السجل بتاع ختم السورة للمستخدم ده في المجموعة دي
+      await supabase
+        .from("khatmah_logs")
+        .delete()
+        .eq("surah_id", surah.id)
+        .eq("user_name", userName)
+        .eq("status", "completed")
+        .eq("khatmah_id", currentGroup.id);
+    } else {
+      // لو الأكشن ختم، هنضيف سجل جديد
+      const sLogs = (logs || []).filter((l) => l.surah_id === surah.id);
+      if (getUniqueVersesCount(sLogs) >= surah.ayat) {
+        setLoading(false);
+        return;
+      }
+      await supabase.from("khatmah_logs").insert([
+        {
+          surah_id: surah.id,
+          user_name: userName,
+          status: "completed",
+          verse_start: 1,
+          verse_end: surah.ayat,
+          khatmah_id: currentGroup.id,
+        },
+      ]);
+    }
+
     fetchData();
     setLoading(false);
   };

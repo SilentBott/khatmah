@@ -145,6 +145,11 @@ export default function KhatmahModal({
   const [verseMenu, setVerseMenu] = useState(null);
   const [qSearch, setQSearch] = useState("");
   const isMobile = window.innerWidth < 640;
+  const [touchStart, setTouchStart] = useState(null);
+  const [swipeOffset, setSwipeOffset] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isSnapping, setIsSnapping] = useState(false);
+  const [isAnimatingTurn, setIsAnimatingTurn] = useState(false);
 
   const surahPages = useMemo(() => {
     if (!selected || dataLoading) return [];
@@ -155,6 +160,84 @@ export default function KhatmahModal({
     ];
     return pages.sort((a, b) => a - b);
   }, [selected, quranData, dataLoading]);
+  const triggerSlide = (direction) => {
+    if (isSnapping) return;
+    const gap = 20; // 👈 المسافة الخفيفة بين الصفحات
+    const moveDistance = window.innerWidth + gap;
+
+    setIsSnapping(true);
+    setSwipeOffset(direction === "next" ? moveDistance : -moveDistance);
+
+    setTimeout(() => {
+      setIsSnapping(false);
+      setSwipeOffset(0);
+      if (direction === "next") {
+        setCurrentPageIndex((p) => Math.min(surahPages.length - 1, p + 1));
+      } else {
+        setCurrentPageIndex((p) => Math.max(0, p - 1));
+      }
+    }, 300);
+  };
+
+  const handlePrevPage = () => {
+    if (!isDragging && !isSnapping) triggerSlide("prev");
+  };
+
+  const handleNextPage = () => {
+    if (!isDragging && !isSnapping) triggerSlide("next");
+  };
+
+  // 👇 دوال اللمس بصباعك
+  const onTouchStart = (e) => {
+    if (isSnapping) return;
+    setTouchStart(e.targetTouches[0].clientX);
+    setIsDragging(true);
+    setSwipeOffset(0);
+  };
+
+  const onTouchMove = (e) => {
+    if (!touchStart || isSnapping) return;
+    const diff = e.targetTouches[0].clientX - touchStart;
+
+    if (diff > 0 && currentPageIndex === surahPages.length - 1) return;
+    if (diff < 0 && currentPageIndex === 0) return;
+
+    setSwipeOffset(diff);
+  };
+
+  const onTouchEnd = () => {
+    if (isSnapping || !isDragging) return;
+    setIsDragging(false);
+    if (!touchStart) return;
+
+    const gap = 20;
+    const moveDistance = window.innerWidth + gap;
+    const threshold = window.innerWidth * 0.35;
+
+    setIsSnapping(true);
+
+    if (swipeOffset > threshold && currentPageIndex < surahPages.length - 1) {
+      // سحب لليمين -> جيب الصفحة التالية
+      setSwipeOffset(moveDistance);
+      setTimeout(() => {
+        setIsSnapping(false);
+        setSwipeOffset(0);
+        setCurrentPageIndex((p) => p + 1);
+      }, 300);
+    } else if (swipeOffset < -threshold && currentPageIndex > 0) {
+      // سحب للشمال -> جيب الصفحة السابقة
+      setSwipeOffset(-moveDistance);
+      setTimeout(() => {
+        setIsSnapping(false);
+        setSwipeOffset(0);
+        setCurrentPageIndex((p) => p - 1);
+      }, 300);
+    } else {
+      // مسحبش كفاية -> ارجع مكانك
+      setSwipeOffset(0);
+      setTimeout(() => setIsSnapping(false), 300);
+    }
+  };
 
   const quickResults = useMemo(() => {
     if (!quickRegister || qSearch.length < 2) return null;
@@ -213,6 +296,74 @@ export default function KhatmahModal({
       </div>
     );
 
+  const renderVerses = (targetPageIdx) => {
+    if (targetPageIdx < 0 || targetPageIdx >= surahPages.length) return null;
+
+    return quranData
+      ?.filter(
+        (v) =>
+          v.sura === selected.id &&
+          (continuousReading ? true : v.page === surahPages[targetPageIdx]),
+      )
+      .map((v, i) => {
+        const isSel = vRanges?.some(
+          (r) =>
+            r.isActive &&
+            !r.isSaved &&
+            v.aya >= r.start &&
+            (r.end ? v.aya <= r.end : v.aya === r.start),
+        );
+        const isOcc = occupied.has(v.aya);
+        const isFull = highlightMode === "full";
+        const isRow = highlightMode === "row";
+        const isText = highlightMode === "text";
+
+        let highlightStyle = {};
+        if (isSel) {
+          if (isText) highlightStyle = { color: "#ffb900" };
+          else if (isFull) {
+            const bgColor =
+              theme === "dark"
+                ? "rgba(212, 175, 55, 1)"
+                : "rgba(255, 217, 105, 1)";
+            highlightStyle = {
+              color: "black",
+              padding: "0 1px",
+              margin: "0 -1px",
+              boxDecorationBreak: "clone",
+              WebkitBoxDecorationBreak: "clone",
+              borderRadius: "4px",
+              backgroundImage: `linear-gradient(to bottom, transparent 4px, ${bgColor} 4px, ${bgColor} calc(100% - 4px), transparent calc(100% - 4px))`,
+              backgroundClip: "padding-box",
+              backgroundColor: "transparent",
+            };
+          } else if (isRow) {
+            highlightStyle = {
+              backgroundImage:
+                theme === "dark"
+                  ? "linear-gradient(to bottom, transparent 1.24em, rgba(255, 168, 0, 0.3) 5px, rgba(255, 168, 0, 0.3) calc(100% - 0.4em), transparent calc(100% - 0.5em))"
+                  : "linear-gradient(to bottom, transparent 1.24em, rgba(255, 185, 0, 0.3) 5px, rgba(255, 185, 0, 0.3) calc(100% - 0.4em), transparent calc(100% - 0.5em))",
+              mixBlendMode: theme === "dark" ? "lighten" : "darken",
+            };
+          }
+        }
+        return (
+          <span
+            key={i}
+            onClick={(e) => toggleVerseMenu(v.aya, e)}
+            className={`inline transition-all duration-200 cursor-pointer ${isOcc ? "text-slate-400/40 grayscale pointer-events-none" : ""}`}
+            style={highlightStyle}
+          >
+            {v.text.trim()}
+            <span
+              className={`${isSel ? (isFull ? "text-emerald-950" : "text-[#ffb900]") : isOcc ? "text-slate-400/30" : "text-[#ffb900]"} opacity-100 text-[0.6em] font-sans inline-block px-[0.2em] ml-[0.2em]`}
+            >
+              ({v.aya})
+            </span>
+          </span>
+        );
+      });
+  };
   return (
     <>
       <style>{` .quran-scroll::-webkit-scrollbar { width: 3px; } .quran-scroll::-webkit-scrollbar-track { background: transparent; margin: 30px 0; } .quran-scroll::-webkit-scrollbar-thumb { background: #ffb900; border-radius: 10px; } `}</style>
@@ -240,7 +391,6 @@ export default function KhatmahModal({
         </div>
       )}
 
-      {/* //! التعديل هنا: استخدام lg بدل sm للتحويل لـ Popup */}
       <div
         className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-end lg:items-center justify-center p-0 lg:p-4"
         onClick={() => {
@@ -259,10 +409,9 @@ export default function KhatmahModal({
               theme === "dark"
                 ? "bg-[#042f24] lg:border-2 border-emerald-800 shadow-[0_-10px_40px_rgba(0,0,0,0.5)]"
                 : "bg-white lg:border-2 border-slate-200 shadow-xl"
-            } p-4 sm:p-10 text-right relative flex flex-col`}
+            } p-2 sm:p-10 text-right relative flex flex-col`}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* //! إخفاء الشريط العلوي في اللاب توب فقط */}
           <div className="w-12 h-1.5 bg-emerald-500/20 rounded-full mx-auto mb-6 lg:hidden shrink-0"></div>
 
           <div className="flex justify-between items-center mb-8 px-2">
@@ -394,12 +543,12 @@ export default function KhatmahModal({
             <>
               {showFullQuran && (
                 <div className="mb-8 w-full animate-in fade-in duration-500">
-                  <div className="flex justify-between items-center mb-6 px-2 sm:px-6">
+                  <div className="flex justify-between items-center mb-2 px-2 sm:px-6">
                     <button
                       onClick={() => setContinuousReading(!continuousReading)}
                       className={`text-[0.6rem] sm:text-xs px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl border-2 font-black transition-all active:scale-95 ${theme === "dark" ? "bg-emerald-800 border-emerald-700 text-emerald-100" : "bg-emerald-100 border-emerald-200 text-emerald-800 hover:bg-emerald-200"}`}
                     >
-                      {continuousReading ? "عرض الصفحات" : "قراءة متواصلة"}
+                      {continuousReading ? "قراءة متواصلة" : "عرض الصفحات"}
                     </button>
                     {!continuousReading && (
                       <div className="flex items-center gap-3 sm:gap-6">
@@ -431,82 +580,84 @@ export default function KhatmahModal({
                   </div>
 
                   <div
-                    className={`w-full py-10 px-2 sm:px-6 ${theme === "dark" ? "bg-[#004030]/40 border-emerald-900/50" : "bg-amber-50/50 border-amber-100 shadow-sm"} border-y-2 sm:border-y-4 rounded-[1.5rem] sm:rounded-[2.5rem] overflow-hidden`}
+                    className={`relative touch-pan-y w-full border-y-2 sm:border-y-4 rounded-[1.5rem] sm:rounded-[2.5rem] overflow-hidden ${theme === "dark" ? "border-emerald-900/50 bg-[#042f24]" : "border-amber-100 bg-white"}`}
+                    onTouchStart={!continuousReading ? onTouchStart : undefined}
+                    onTouchMove={!continuousReading ? onTouchMove : undefined}
+                    onTouchEnd={!continuousReading ? onTouchEnd : undefined}
+                    dir="rtl"
                   >
+                    {/* 👇 شريط الصفحات المتصل */}
                     <div
-                      style={{ containerType: "inline-size" }}
-                      className="w-full"
+                      className="relative w-full"
+                      style={{
+                        transform: `translateX(${swipeOffset}px)`,
+                        transition: isSnapping
+                          ? "transform 0.3s cubic-bezier(0.25, 1, 0.5, 1)"
+                          : "none",
+                      }}
                     >
-                      <div
-                        className={`text-justify font-['Amiri_Quran'] ${theme === "dark" ? "text-emerald-50" : "text-slate-900"} transition-all`}
-                        style={{
-                          lineHeight: "2.1",
-                          fontSize: `${2.47 + fontSize * 0.66}cqi`,
-                          textShadow: "0px 0px 0.3px currentColor",
-                        }}
-                        dir="rtl"
-                      >
-                        {quranData
-                          ?.filter(
-                            (v) =>
-                              v.sura === selected.id &&
-                              (continuousReading
-                                ? true
-                                : v.page === surahPages[currentPageIndex]),
-                          )
-                          .map((v, i) => {
-                            const isSel = vRanges?.some(
-                              (r) =>
-                                r.isActive &&
-                                !r.isSaved &&
-                                v.aya >= r.start &&
-                                (r.end ? v.aya <= r.end : v.aya === r.start),
-                            );
-                            const isOcc = occupied.has(v.aya);
+                      {/* 1. الصفحة السابقة (مرصوصة على اليمين بمسافة 20 بكسل) */}
+                      {!continuousReading && currentPageIndex > 0 && (
+                        <div
+                          className="absolute top-0 w-full"
+                          style={{ left: "calc(100% + 20px)" }}
+                        >
+                          <div className="w-full py-3 px-2 sm:px-6">
+                            {" "}
+                            {/* الـ Padding جوه هنا */}
+                            <div
+                              className={`text-justify font-['Amiri_Quran'] ${theme === "dark" ? "text-emerald-50" : "text-slate-900"}`}
+                              style={{
+                                lineHeight: "2.1",
+                                fontSize: `${2.4 + fontSize * 0.66}cqi`,
+                              }}
+                            >
+                              {renderVerses(currentPageIndex - 1)}
+                            </div>
+                          </div>
+                        </div>
+                      )}
 
-                            const isFull = highlightMode === "full";
-                            const isRow = highlightMode === "row";
-                            const isText = highlightMode === "text";
-
-                            let highlightStyle = {};
-                            if (isSel) {
-                              if (isText) {
-                                highlightStyle = { color: "#ffb900" };
-                              } else if (isRow) {
-                                highlightStyle = {
-                                  backgroundColor:
-                                    theme === "dark" ? "#78350f" : "#fef08a",
-                                  padding: "0",
-                                };
-                              } else if (isFull) {
-                                highlightStyle = {
-                                  backgroundColor: "#ffb900",
-                                  color: "#022a1d",
-                                  padding: "0.15em 0.1em",
-                                  WebkitBoxDecorationBreak: "clone",
-                                  boxDecorationBreak: "clone",
-                                  borderRadius: "4px",
-                                };
-                              }
-                            }
-
-                            return (
-                              <span
-                                key={i}
-                                onClick={(e) => toggleVerseMenu(v.aya, e)}
-                                className={`inline transition-all duration-200 cursor-pointer ${isOcc ? "text-slate-400/40 grayscale pointer-events-none" : ""}`}
-                                style={highlightStyle}
-                              >
-                                {v.text}
-                                <span
-                                  className={`${isSel ? (isFull ? "text-emerald-800" : "text-[#ffb900]") : isOcc ? "text-slate-400/30" : "text-[#ffb900]"} opacity-100 text-[0.65em] font-sans inline-block px-[0.2em] ml-[0.2em]`}
-                                >
-                                  ({v.aya})
-                                </span>
-                              </span>
-                            );
-                          })}
+                      {/* 2. الصفحة الحالية (اللي ظاهرة في النص) */}
+                      <div className="relative z-10 w-full">
+                        <div className="w-full py-3 px-2 sm:px-6">
+                          {" "}
+                          {/* الـ Padding جوه هنا */}
+                          <div
+                            className={`text-justify font-['Amiri_Quran'] ${theme === "dark" ? "text-emerald-50" : "text-slate-900"} transition-all`}
+                            style={{
+                              lineHeight: "2.1",
+                              fontSize: `${2.4 + fontSize * 0.66}cqi`,
+                              textShadow: "0px 0px 0.3px currentColor",
+                            }}
+                          >
+                            {renderVerses(currentPageIndex)}
+                          </div>
+                        </div>
                       </div>
+
+                      {/* 3. الصفحة التالية (مرصوصة على الشمال بمسافة 20 بكسل) */}
+                      {!continuousReading &&
+                        currentPageIndex < surahPages.length - 1 && (
+                          <div
+                            className="absolute top-0 w-full"
+                            style={{ right: "calc(100% + 20px)" }}
+                          >
+                            <div className="w-full py-3 px-2 sm:px-6">
+                              {" "}
+                              {/* الـ Padding جوه هنا */}
+                              <div
+                                className={`text-justify font-['Amiri_Quran'] ${theme === "dark" ? "text-emerald-50" : "text-slate-900"}`}
+                                style={{
+                                  lineHeight: "2.1",
+                                  fontSize: `${2.4 + fontSize * 0.66}cqi`,
+                                }}
+                              >
+                                {renderVerses(currentPageIndex + 1)}
+                              </div>
+                            </div>
+                          </div>
+                        )}
                     </div>
                   </div>
                 </div>

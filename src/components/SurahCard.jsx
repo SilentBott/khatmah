@@ -1,4 +1,4 @@
-import { useContext, useMemo, useRef } from "react";
+import { useContext, useMemo, useRef, useState } from "react";
 import { FontContext } from "../FontContext";
 import { CheckCircle2 } from "lucide-react";
 
@@ -11,8 +11,10 @@ export default function SurahCard({
   ...props
 }) {
   const { theme, getUniqueVersesCount } = useContext(FontContext);
-  const timerRef = useRef(null);
+  const intervalRef = useRef(null);
   const isLongPress = useRef(false);
+  const [holdProgress, setHoldProgress] = useState(0);
+  const [holdAction, setHoldAction] = useState(null);
 
   if (!s) return null;
 
@@ -38,17 +40,56 @@ export default function SurahCard({
     return [...new Set(sLogs.map((l) => l.user_name))];
   }, [sLogs, isCompleted]);
 
-  // //! تفعيل ميزة الضغطة المطولة وتعديل الوقت لـ 3.5 ثواني
+  // //! نظام السلايدر بعد التعديل لمنع التكرار (الحسابات خارج الـ State)
   const startPress = () => {
+    if (intervalRef.current) return;
+
     isLongPress.current = false;
-    timerRef.current = setTimeout(() => {
-      isLongPress.current = true;
-      if (onLongPress) onLongPress(s);
-    }, 3500); // 3500 ملي ثانية = 3 ثواني ونصف
+    const action = isCompleted ? "undo" : "complete";
+    setHoldAction(action);
+    setHoldProgress(0);
+
+    let currentVal = 0;
+    const step = 100 / (1500 / 50); // 1.5 ثانية
+
+    intervalRef.current = setInterval(() => {
+      currentVal += step;
+
+      if (currentVal >= 100) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+        isLongPress.current = true;
+        setHoldProgress(100);
+        if (navigator.vibrate) navigator.vibrate(50);
+
+        setTimeout(() => {
+          if (action === "complete") {
+            if (
+              window.confirm(`هل أنت متأكد من ختم سورة ${s.name_ar} بالكامل؟`)
+            ) {
+              if (onLongPress) onLongPress(s, "complete");
+            }
+          } else {
+            if (
+              window.confirm(`هل أنت متأكد من إلغاء ختم سورة ${s.name_ar}؟`)
+            ) {
+              if (onLongPress) onLongPress(s, "undo");
+            }
+          }
+          setHoldProgress(0);
+        }, 50);
+      } else {
+        setHoldProgress(currentVal);
+      }
+    }, 50);
   };
 
   const cancelPress = () => {
-    if (timerRef.current) clearTimeout(timerRef.current);
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    setHoldProgress(0);
   };
 
   const handleClick = (e) => {
@@ -70,7 +111,23 @@ export default function SurahCard({
       {...props}
       className={`relative p-6 pb-10 rounded-[2.5rem] border-2 transition-all active:scale-95 group overflow-hidden select-none touch-manipulation ${isCompleted ? "border-emerald-500 bg-emerald-500/10" : theme === "dark" ? "bg-emerald-900/10 border-emerald-800/30" : "bg-white border-emerald-100/80 shadow-sm hover:shadow-md"}`}
     >
-      <div className="flex flex-col items-center gap-3">
+      {/* //! الأخضر من تحت لفوق للختم */}
+      {holdProgress > 0 && holdAction === "complete" && (
+        <div
+          className="absolute bottom-0 left-0 right-0 bg-emerald-500/30 z-0 transition-all ease-linear duration-75"
+          style={{ height: `${holdProgress}%` }}
+        />
+      )}
+
+      {/* //! الأحمر من فوق لتحت لإلغاء الختم بلملي صخر */}
+      {holdProgress > 0 && holdAction === "undo" && (
+        <div
+          className="absolute top-0 left-0 right-0 bg-red-500/30 z-0 transition-all ease-linear duration-75"
+          style={{ height: `${holdProgress}%` }}
+        />
+      )}
+
+      <div className="flex flex-col items-center gap-3 relative z-10">
         <span className="text-xs sm:text-sm font-black opacity-50 uppercase tracking-widest">
           {s.id}
         </span>
@@ -113,7 +170,7 @@ export default function SurahCard({
           </div>
         )}
       </div>
-      <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-slate-200/10 overflow-hidden">
+      <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-slate-200/10 overflow-hidden z-10">
         <div
           className={`h-full transition-all duration-1000 ${theme === "dark" ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]" : "bg-emerald-400"}`}
           style={{ width: `${(progress / (s?.ayat || 1)) * 100}%` }}

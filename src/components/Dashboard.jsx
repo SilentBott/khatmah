@@ -16,6 +16,53 @@ import {
   Layers,
 } from "lucide-react";
 
+const HoldToConfirmButton = ({ onConfirm, theme }) => {
+  const [progress, setProgress] = useState(0);
+  const timerRef = useRef(null);
+
+  const startHold = () => {
+    if (timerRef.current) return;
+    setProgress(0);
+    let curr = 0;
+    const step = 100 / (10000 / 100); // 10 ثواني
+    timerRef.current = setInterval(() => {
+      curr += step;
+      if (curr >= 100) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+        setProgress(100);
+        onConfirm();
+      } else {
+        setProgress(curr);
+      }
+    }, 100);
+  };
+
+  const stopHold = () => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = null;
+    setProgress(0);
+  };
+
+  return (
+    <div className="relative w-full overflow-hidden rounded-2xl">
+      <button
+        onPointerDown={startHold}
+        onPointerUp={stopHold}
+        onPointerLeave={stopHold}
+        onContextMenu={(e) => e.preventDefault()}
+        className={`relative z-10 w-full py-4 font-black text-xs sm:text-sm transition-all select-none touch-manipulation ${theme === "dark" ? "bg-red-900/40 text-red-300 border border-red-800/50" : "bg-red-50 text-red-600 border border-red-200"}`}
+      >
+        إزالة كل ما قرأته في المجموعة (اضغط باستمرار 10 ثوانٍ)
+      </button>
+      <div
+        className="absolute top-0 bottom-0 left-0 bg-red-600 transition-all ease-linear duration-100 z-0 opacity-50"
+        style={{ width: `${progress}%` }}
+      ></div>
+    </div>
+  );
+};
+
 export default function Dashboard({
   userName,
   myKhatmats,
@@ -41,7 +88,6 @@ export default function Dashboard({
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [jInp, setJInp] = useState("");
   const [nInp, setNInp] = useState("");
-  const timerRef = useRef(null);
 
   const riwayas = ["Hafs", "Warsh", "Qaloun", "Douri", "Sousi", "Shuba"];
   const riwayaAr = {
@@ -53,7 +99,7 @@ export default function Dashboard({
     Shuba: "شعبة عن عاصم",
   };
   const hModes = ["row", "full", "text"];
-  const hModesAr = { row: "سطر", full: "كامل", text: "نص" };
+  const hModesAr = { row: "خفيف", full: "كامل", text: "نص" };
   const vModes = ["num", "text", "both"];
   const vModesAr = { num: "رقم", text: "نص", both: "الـ2" };
 
@@ -62,16 +108,50 @@ export default function Dashboard({
     window.location.reload();
   };
 
-  // //! دالة الضغط المطول للخروج من المجموعة بلملي
-  const handlePointerDown = (group) => {
-    timerRef.current = setTimeout(() => {
-      if (window.confirm(`هل تريد الخروج من مجموعة "${group.name}"؟`)) {
-        if (onLeaveGroup) onLeaveGroup(group.id);
+  const [holdingGroupId, setHoldingGroupId] = useState(null);
+  const [holdProgress, setHoldProgress] = useState(0);
+  const intervalRef = useRef(null);
+
+  // //! نظام السلايدر للخروج من المجموعة بعد حل مشكلة التكرار
+  const startGroupHold = (group) => {
+    if (intervalRef.current) return;
+
+    setHoldingGroupId(group.id);
+    setHoldProgress(0);
+    let currentVal = 0;
+    const step = 100 / (1500 / 50);
+
+    intervalRef.current = setInterval(() => {
+      currentVal += step;
+
+      if (currentVal >= 100) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+        setHoldProgress(100);
+        if (navigator.vibrate) navigator.vibrate(50);
+
+        setTimeout(() => {
+          if (
+            window.confirm(`هل أنت متأكد من الخروج من مجموعة "${group.name}"؟`)
+          ) {
+            if (onLeaveGroup) onLeaveGroup(group.id);
+          }
+          setHoldingGroupId(null);
+          setHoldProgress(0);
+        }, 50);
+      } else {
+        setHoldProgress(currentVal);
       }
-    }, 3000); // 3 ثواني
+    }, 50);
   };
-  const handlePointerUp = () => {
-    if (timerRef.current) clearTimeout(timerRef.current);
+
+  const cancelGroupHold = () => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    setHoldProgress(0);
+    setHoldingGroupId(null);
   };
 
   return (
@@ -99,7 +179,7 @@ export default function Dashboard({
         </div>
       </header>
 
-      <div className="space-y-5">
+      <div className="space-y-2">
         <button
           onClick={() => setcurrentGroup({ id: null, name: "ختمتي الشخصية" })}
           className={`w-full ${theme === "dark" ? "bg-emerald-900/10 border-emerald-800" : "bg-white border-slate-200"} border-2 p-8 rounded-[3rem] flex flex-row-reverse justify-between items-center group active:scale-95 shadow-sm`}
@@ -119,16 +199,28 @@ export default function Dashboard({
           </div>
           <ChevronDown className="rotate-90 text-slate-300" />
         </button>
+
         {myKhatmats?.map((k) => (
           <button
             key={k.id}
-            onClick={() => setcurrentGroup(k)}
-            onPointerDown={() => handlePointerDown(k)}
-            onPointerUp={handlePointerUp}
-            onPointerLeave={handlePointerUp}
-            className={`w-full touch-manipulation select-none ${theme === "dark" ? "bg-emerald-900/5 border-emerald-800/50" : "bg-white border-slate-100"} border p-8 rounded-[3rem] flex flex-row-reverse justify-between items-center group active:scale-95 shadow-sm`}
+            onClick={() => {
+              if (holdProgress === 0) setcurrentGroup(k);
+            }}
+            onPointerDown={() => startGroupHold(k)}
+            onPointerUp={cancelGroupHold}
+            onPointerMove={cancelGroupHold}
+            onPointerLeave={cancelGroupHold}
+            onContextMenu={(e) => e.preventDefault()}
+            className={`w-full relative overflow-hidden touch-manipulation select-none ${theme === "dark" ? "bg-emerald-900/5 border-emerald-800/50" : "bg-white border-slate-100"} border p-8 rounded-[3rem] flex flex-row-reverse justify-between items-center group active:scale-95 shadow-sm`}
           >
-            <div className="flex flex-row-reverse items-center gap-5">
+            {holdingGroupId === k.id && holdProgress > 0 && (
+              <div
+                className="absolute top-0 right-0 bottom-0 bg-red-500/30 z-0 transition-all ease-linear duration-75"
+                style={{ width: `${holdProgress}%` }}
+              />
+            )}
+
+            <div className="flex flex-row-reverse items-center gap-5 relative z-10">
               <div className="bg-emerald-500/5 p-5 rounded-3xl">
                 <Users size={28} className="text-emerald-500" />
               </div>
@@ -141,34 +233,17 @@ export default function Dashboard({
                 </p>
               </div>
             </div>
-            <ChevronDown className="rotate-90 text-slate-300" />
+            <ChevronDown className="rotate-90 text-slate-300 relative z-10" />
           </button>
         ))}
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-12">
-          <div className="dark:bg-emerald-900/5 bg-white border border-dashed p-7 rounded-[2.5rem] border-inherit shadow-sm">
-            <input
-              value={jInp}
-              onKeyDown={(e) => e.key === "Enter" && onJoin(jInp)}
-              onChange={(e) => setJInp(e.target.value)}
-              placeholder="اسم الختمة بالضبط"
-              className="w-full bg-transparent border-b border-emerald-800/20 mb-6 p-2 text-center outline-none font-black text-sm sm:text-base"
-            />
-            <button
-              onClick={() => {
-                onJoin(jInp);
-                setJInp("");
-              }}
-              className="w-full bg-amber-500 text-emerald-950 py-4 rounded-2xl font-black text-[0.7rem] sm:text-xs uppercase shadow-lg"
-            >
-              انضمام
-            </button>
-          </div>
           <div className="dark:bg-emerald-900/5 bg-white border border-dashed p-7 rounded-[2.5rem] border-inherit shadow-sm">
             <input
               value={nInp}
               onKeyDown={(e) => e.key === "Enter" && onCreate(nInp)}
               onChange={(e) => setNInp(e.target.value)}
-              placeholder="اسم مجموعة جديدة"
+              placeholder="أكتب هنا إسم المجموعة المراد صنعها"
               className="w-full bg-transparent border-b border-emerald-800/20 mb-6 p-2 text-center outline-none font-black text-sm sm:text-base"
             />
             <button
@@ -178,7 +253,25 @@ export default function Dashboard({
               }}
               className="w-full bg-emerald-700 text-white py-4 rounded-2xl font-black text-[0.7rem] sm:text-xs uppercase shadow-lg"
             >
-              إنشاء
+              إنشاء مجموعة
+            </button>
+          </div>
+          <div className="dark:bg-emerald-900/5 bg-white border border-dashed p-7 rounded-[2.5rem] border-inherit shadow-sm">
+            <input
+              value={jInp}
+              onKeyDown={(e) => e.key === "Enter" && onJoin(jInp)}
+              onChange={(e) => setJInp(e.target.value)}
+              placeholder="أكتب هنا إسم المجموعة المراد الإنضمام لها"
+              className="w-full bg-transparent border-b border-emerald-800/20 mb-6 p-2 text-center outline-none font-black text-sm sm:text-base"
+            />
+            <button
+              onClick={() => {
+                onJoin(jInp);
+                setJInp("");
+              }}
+              className="w-full bg-amber-500 text-white py-4 rounded-2xl font-black text-[0.7rem] sm:text-xs uppercase shadow-lg"
+            >
+              الإنضمام لمجموعة
             </button>
           </div>
         </div>
@@ -259,7 +352,7 @@ export default function Dashboard({
                     <span
                       className={`text-[0.65rem] sm:text-xs font-black uppercase tracking-widest ${theme === "dark" ? "text-emerald-200 opacity-60" : "text-slate-400"}`}
                     >
-                      عرض الآيات
+                      عرض الآيات عند التسجيل
                     </span>
                     <button
                       onClick={() =>
@@ -307,7 +400,7 @@ export default function Dashboard({
                   className={`mt-8 p-6 rounded-[2.5rem] border border-dashed transition-colors ${theme === "dark" ? "border-emerald-600/30 bg-emerald-900/20" : "border-slate-300 bg-slate-50/50"} shadow-inner`}
                 >
                   <p
-                    className={`text-[0.65rem] sm:text-xs font-black mb-6 text-center uppercase tracking-widest ${theme === "dark" ? "text-emerald-200 opacity-40" : "text-slate-400"}`}
+                    className={`text-[0.6rem] sm:text-xs font-black uppercase ${theme === "dark" ? "text-emerald-200 opacity-30" : "text-slate-400 opacity-70"}`}
                   >
                     معاينة التغييرات
                   </p>
@@ -322,38 +415,48 @@ export default function Dashboard({
                         سُورَةُ الفَاتِحَةِ
                       </h3>
                     </div>
-                    <div className="flex flex-col gap-1.5">
+                    <div
+                      className={`text-justify font-['Amiri_Quran'] ${theme === "dark" ? "text-emerald-50" : "text-slate-900"} transition-all`}
+                      style={{
+                        lineHeight: "2.1",
+                        fontSize: `${2.47 + fontSize * 0.66}cqi`,
+                        textShadow: "0px 0px 0.3px currentColor",
+                      }}
+                      dir="rtl"
+                    >
                       <span
-                        className={`text-[0.6rem] sm:text-xs font-black uppercase ${theme === "dark" ? "text-emerald-200 opacity-30" : "text-slate-400 opacity-70"}`}
-                      >
-                        نص المصحف
-                      </span>
-                      <p
-                        className={`font-serif transition-all text-xl sm:text-2xl ${theme === "dark" ? "text-white" : "text-slate-900"}`}
-                        style={{ lineHeight: "1.6" }}
-                      >
-                        <span
-                          className={`inline transition-all duration-200 font-semibold
-                            ${highlightMode === "full" ? "font-black block w-full text-center py-2 text-white" : ""} 
-                            ${highlightMode === "row" ? "px-0 text-white" : ""}
-                            ${highlightMode === "text" ? "text-[#ffb900]" : ""}`}
-                          style={
-                            highlightMode === "full" || highlightMode === "row"
+                        className={`inline transition-all duration-200`}
+                        style={
+                          highlightMode === "full"
+                            ? {
+                                color: "black",
+                                padding: "0 1px",
+                                margin: "0 -1px",
+                                boxDecorationBreak: "clone",
+                                borderRadius: "2px",
+                                backgroundImage:
+                                  theme === "dark"
+                                    ? "linear-gradient(to bottom, transparent .3em, #d4af37 0px)" // اغمق "نقطة" بسيطة لليلي
+                                    : "linear-gradient(to bottom, transparent .3em, rgba(255, 217, 105, 1) 0px)",
+                                mixBlendMode:
+                                  theme === "dark" ? "lighten" : "darken",
+                              }
+                            : highlightMode === "row"
                               ? {
-                                  backgroundColor: "#ffb900",
-                                  padding: "2px 4px",
-                                  WebkitBoxDecorationBreak: "clone",
-                                  boxDecorationBreak: "clone",
-                                  borderRadius: "4px",
-                                  color: "#fff",
-                                  textShadow: "1px 1px 2px rgba(0,0,0,0.4)",
+                                  backgroundImage:
+                                    theme === "dark"
+                                      ? "linear-gradient(to bottom, transparent 1.24em, rgba(255, 168, 0, 0.3) 5px, rgba(255, 168, 0, 0.3) calc(100% - 0.4em), transparent calc(100% - 0.5em))"
+                                      : "linear-gradient(to bottom, transparent 1.24em, rgba(255, 185, 0, 0.3) 5px, rgba(255, 185, 0, 0.3) calc(100% - 0.4em), transparent calc(100% - 0.5em))",
+                                  mixBlendMode:
+                                    theme === "dark" ? "lighten" : "darken",
                                 }
-                              : {}
-                          }
-                        >
-                          بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ
-                        </span>
-                      </p>
+                              : highlightMode === "text"
+                                ? { color: "#ffb900" }
+                                : {}
+                        }
+                      >
+                        بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ
+                      </span>
                     </div>
                     <div
                       className={`flex flex-col gap-1.5 border-t pt-5 ${theme === "dark" ? "border-emerald-500/10" : "border-slate-200"}`}
